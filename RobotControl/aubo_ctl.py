@@ -39,6 +39,7 @@ class AuboControl:
         :param ip: 机械臂IP
         :param port: 机械臂Port
         """
+        self.robot_brand = 'aubo'
         if tool_end is None:
             tool_end = dict(pos=(0, 0, 0.296), ori=(1, 0, 0, 0))
 

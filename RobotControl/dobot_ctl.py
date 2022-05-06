@@ -33,6 +33,7 @@ class DobotControl:
         :param ip: 机械臂IP
         :param port_ctl: 机械臂Port
         """
+        self.robot_brand = 'dobot'
         if tool_end is None:
             tool_end = dict(pos=(0, 0, 0), ori=(0, 0, 0))
 
