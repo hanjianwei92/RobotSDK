@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
-from dobot import *
+from .dobot import *
 from queue import Queue
-from coor_and_move_style import *
+from .coor_and_move_style import *
 
 
 class DobotControl:

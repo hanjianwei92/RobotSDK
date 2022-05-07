@@ -2,7 +2,7 @@ import math
 import numpy as np
 from scipy.spatial.transform import Rotation
 from queue import Queue
-from coor_and_move_style import *
+from .coor_and_move_style import *
 import datetime
 import platform
 if platform.system() == "Windows":
