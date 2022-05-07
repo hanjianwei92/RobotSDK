@@ -1,2 +1,5 @@
 RobotControl.egg-info
 RobotControl/dobot.log
+build
+dist
+.idea

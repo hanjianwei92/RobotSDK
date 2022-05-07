@@ -2,21 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from dobot import *
 from queue import Queue
-
-
-class RobotMoveStyle:
-    move_joint = 0
-    move_joint_line = 1
-    # 圆弧轨迹运动
-    move_track_arc_circle = 2
-    # 轨迹运动movep
-    move_track_movep = 3
-
-
-class RobotCoorStyle:
-    base = 0
-    flanger = 1
-    tool_end = 2
+from coor_and_move_style import *
 
 
 class DobotControl:
