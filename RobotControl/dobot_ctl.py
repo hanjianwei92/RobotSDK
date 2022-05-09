@@ -24,7 +24,7 @@ class DobotControl:
             tool_end = dict(pos=(0, 0, 0), ori=(0, 0, 0))
 
         if logger is None:
-            logger = CasLogger("dobot.log",info_queue = Queue(),error_queue = Queue())
+            logger = CasLogger("dobot.log", info_queue=Queue(), error_queue=Queue())
 
         self.log = logger
         self.robot_ctl = DobotApiDashboard(ip, port_ctl, logger)
@@ -46,6 +46,7 @@ class DobotControl:
 
         self.robot_ctl.User(0)
         self.robot_ctl.Tool(0)
+        self.robot_ctl.SetTerminalKeys(1)
 
         # 设置碰撞等级
         ret = self.robot_ctl.SetCollisionLevel(collision_level)[0]
@@ -209,7 +210,7 @@ class DobotControl:
             last_waypoint_joint = [0, 0, 1] + waypoints_joint[cnt]
             # 逆解到关节空间
             waypoint_joint = self.robot_ctl.InverseSolution(flange_pos_on_base + flange_ori_on_base +
-                                                               last_waypoint_joint)[1]
+                                                            last_waypoint_joint)[1]
             if waypoint_joint is None:
                 self.log.error_show("逆解失败")
                 self.robot_ctl.ClearError()
@@ -225,7 +226,7 @@ class DobotControl:
         final_target_in_flange = self.pos_to_rmatrix([0, 0, offset], list(self.tool_end['ori']))
         rt_final = self.end_to_base(final_target_in_flange)
         pos = rt_final[:3, 3].squeeze().tolist()
-        ori = Rotation.from_matrix(rt_final[:3, :3]). as_euler('xyz', degrees=True).squeeze().tolist()
+        ori = Rotation.from_matrix(rt_final[:3, :3]).as_euler('xyz', degrees=True).squeeze().tolist()
         final_target_joint = self.robot_ctl.InverseSolution(pos + ori)[1]
         if final_target_joint is None:
             self.log.error_show("逆解失败")
@@ -273,8 +274,9 @@ class DobotControl:
                     raise Exception(error_info)
 
         return 1
+
     def move_to_waypoints(self,
-                          waypoints: list ,
+                          waypoints: list,
                           coor: RobotCoorStyle = RobotCoorStyle.base,
                           move_style: RobotMoveStyle = RobotMoveStyle.move_joint,
                           offset: float = 0.0,
@@ -323,7 +325,7 @@ if __name__ == "__main__":
     pos = [-0.1044132, 0.773865, 0.11709, 176.05, -1.958, -22.7447]
     rt = robot.pos_to_rmatrix(pos[:3], pos[3:])
     print("开始移动")
-    robot.move_to_waypoints([rt],is_move_offset=True, offset=0.15)
+    robot.move_to_waypoints([rt], is_move_offset=True, offset=0.15)
     print("移动完毕")
     robot.move_to_waypoints([rt_o])
     # robot.disconnect_robot()

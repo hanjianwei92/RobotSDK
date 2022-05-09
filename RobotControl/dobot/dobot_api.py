@@ -614,6 +614,11 @@ class DobotApiDashboard(DobotApi):
         self.send_data(string)
         return self.wait_reply()
 
+    def SetTerminalKeys(self, status):
+        string = f"：SetTerminalKeys({status:d})"
+        self.send_data(string)
+        return self.wait_reply()
+
 
 class DobotApiMove(DobotApi):
     """
