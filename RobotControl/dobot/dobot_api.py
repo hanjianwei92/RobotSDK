@@ -614,9 +614,13 @@ class DobotApiDashboard(DobotApi):
         self.send_data(string)
         return self.wait_reply()
 
-    def SetTerminalKeys(self, status):
-        string = f"：SetTerminalKeys({status:d})"
-        self.send_data(string)
+    def StartDrag(self, status):
+        string1 = "StartDrag()"
+        string0 = "StopDrag()"
+        if status == 1:
+            self.send_data(string1)
+        else:
+            self.send_data(string0)
         return self.wait_reply()
 
 

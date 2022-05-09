@@ -376,6 +376,6 @@ class AuboControl:
         return self.robot.get_robot_state()
 
     def disconnect_robot(self):
-        self.robot.robot_shutdown()
+        # self.robot.robot_shutdown()
         self.robot.disconnect()
         Auboi5Robot.uninitialize()
