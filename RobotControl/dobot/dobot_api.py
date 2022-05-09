@@ -170,28 +170,35 @@ class DobotApi:
             print(text)
 
     def send_data(self, string):
-        self.log(f"Send to 192.168.5.1:{self.port}: {string}")
-        self.socket_dobot.send(str.encode(string, 'utf-8'))
+        try:
+            self.log(f"Send to 192.168.5.1:{self.port}: {string}")
+            self.socket_dobot.send(str.encode(string, 'utf-8'))
+        except Exception as e:
+             self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed, Please reconnect robot")
 
     def wait_reply(self):
         """
         Read the return value
         """
-        data = self.socket_dobot.recv(1024)
-        data_str = str(data, encoding="utf-8")
-        self.log(f'Receive from 192.168.5.1:{self.port}: {data_str}')
-        result = []
-        error_id = int(data_str.split(',')[0])
-        if error_id != 0:
-            self.log(f'Execute {data_str.split("}")[1].strip(",")} failed, Error id is {error_id}')
-        result_data = data_str.split("{")[1].split("}")[0]
-        if not result_data:
-            result = None
-        else:
-            for value in result_data.split(','):
-                result.append(float(value))
+        try:
+            data = self.socket_dobot.recv(1024)
+            data_str = str(data, encoding="utf-8")
+            self.log(f'Receive from 192.168.5.1:{self.port}: {data_str}')
+            result = []
+            error_id = int(data_str.split(',')[0])
+            if error_id != 0:
+                self.log(f'Execute {data_str.split("}")[1].strip(",")} failed, Error id is {error_id}')
+            result_data = data_str.split("{")[1].split("}")[0]
+            if not result_data:
+                result = None
+            else:
+                for value in result_data.split(','):
+                    result.append(float(value))
 
-        return error_id, result
+            return error_id, result
+        
+        except Exception as e:
+            self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed, Please reconnect robot')
 
     def close(self):
         """

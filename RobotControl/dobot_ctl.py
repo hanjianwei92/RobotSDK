@@ -46,7 +46,6 @@ class DobotControl:
 
         self.robot_ctl.User(0)
         self.robot_ctl.Tool(0)
-        self.robot_ctl.SetTerminalKeys(1)
 
         # 设置碰撞等级
         ret = self.robot_ctl.SetCollisionLevel(collision_level)[0]
