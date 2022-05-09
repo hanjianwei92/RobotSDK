@@ -51,27 +51,29 @@ MyType = np.dtype([(
 ), (
     'i_robot_keep_bit2',
     np.float64,
-), ('tool_accelerometer_values', np.float64, (3, )),
-    ('elbow_position', np.float64, (3, )),
-    ('elbow_velocity', np.float64, (3, )),
-    ('q_target', np.float64, (6, )),
-    ('qd_target', np.float64, (6, )),
-    ('qdd_target', np.float64, (6, )),
-    ('i_target', np.float64, (6, )),
-    ('m_target', np.float64, (6, )),
-    ('q_actual', np.float64, (6, )),
-    ('qd_actual', np.float64, (6, )),
-    ('i_actual', np.float64, (6, )),
-    ('actual_TCP_force', np.float64, (6, )),
-    ('tool_vector_actual', np.float64, (6, )),
-    ('TCP_speed_actual', np.float64, (6, )),
-    ('TCP_force', np.float64, (6, )),
-    ('Tool_vector_target', np.float64, (6, )),
-    ('TCP_speed_target', np.float64, (6, )),
-    ('motor_temperatures', np.float64, (6, )),
-    ('joint_modes', np.float64, (6, )),
-    ('v_actual', np.float64, (6, )),
+), ('tool_accelerometer_values', np.float64, (3,)),
+    ('elbow_position', np.float64, (3,)),
+    ('elbow_velocity', np.float64, (3,)),
+    ('q_target', np.float64, (6,)),
+    ('qd_target', np.float64, (6,)),
+    ('qdd_target', np.float64, (6,)),
+    ('i_target', np.float64, (6,)),
+    ('m_target', np.float64, (6,)),
+    ('q_actual', np.float64, (6,)),
+    ('qd_actual', np.float64, (6,)),
+    ('i_actual', np.float64, (6,)),
+    ('actual_TCP_force', np.float64, (6,)),
+    ('tool_vector_actual', np.float64, (6,)),
+    ('TCP_speed_actual', np.float64, (6,)),
+    ('TCP_force', np.float64, (6,)),
+    ('Tool_vector_target', np.float64, (6,)),
+    ('TCP_speed_target', np.float64, (6,)),
+    ('motor_temperatures', np.float64, (6,)),
+    ('joint_modes', np.float64, (6,)),
+    ('v_actual', np.float64, (6,)),
     ('dummy', np.float64, (9, 6))])
+
+
 # ('hand_type', np.char, (4, )),
 # ('user', np.char,),
 # ('tool', np.char,),
@@ -174,12 +176,13 @@ class DobotApi:
             self.log(f"Send to 192.168.5.1:{self.port}: {string}")
             self.socket_dobot.send(str.encode(string, 'utf-8'))
         except Exception as e:
-             self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed, Please reconnect robot")
+            self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed, Please reconnect robot")
 
     def wait_reply(self):
         """
         Read the return value
         """
+        data_str = ""
         try:
             data = self.socket_dobot.recv(1024)
             data_str = str(data, encoding="utf-8")
@@ -196,7 +199,6 @@ class DobotApi:
                     result.append(float(value))
 
             return error_id, result
-        
         except Exception as e:
             self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed, Please reconnect robot')
 
@@ -204,7 +206,7 @@ class DobotApi:
         """
         Close the port
         """
-        if (self.socket_dobot != 0):
+        if self.socket_dobot != 0:
             self.socket_dobot.close()
 
     def __del__(self):
@@ -636,7 +638,7 @@ class DobotApiMove(DobotApi):
     Define class dobot_api_move to establish a connection to Dobot
     """
 
-    def MovJ(self,  pos: list):
+    def MovJ(self, pos: list):
         """
         Joint motion interface (point-to-point motion mode)
         x: A number in the Cartesian coordinate system x

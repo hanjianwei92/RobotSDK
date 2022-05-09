@@ -261,7 +261,6 @@ class DobotControl:
                     self.log.error_show(error_info)
                     raise Exception(error_info)
 
-
         elif move_style is RobotMoveStyle.move_joint_line:
             for waypoint in waypoints_joint:
                 waypoint_pos = self.robot_ctl.PositiveSolution(waypoint)[1]
