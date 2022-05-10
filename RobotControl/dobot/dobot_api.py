@@ -133,6 +133,7 @@ def robot_info_recv():
                 data += temp
         hasRead = 0
         a = np.frombuffer(data, dtype=MyType)
+        print(a)
         time.sleep(0.005)
 
 
@@ -154,7 +155,7 @@ class DobotApi:
                 self.socket_dobot.connect((self.ip, self.port))
             except socket.error as e:
                 raise Exception(
-                    f"Unable to set socket connection use port {self.port} !", socket.error)
+                    f"Unable to set socket connection use port {self.port} {e}!", socket.error)
         else:
             raise Exception(
                 f"Connect to dashboard server need use port {self.port} !")
@@ -176,7 +177,7 @@ class DobotApi:
             self.log(f"Send to 192.168.5.1:{self.port}: {string}")
             self.socket_dobot.send(str.encode(string, 'utf-8'))
         except Exception as e:
-            self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed, Please reconnect robot")
+            self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed {e}, Please reconnect robot")
 
     def wait_reply(self):
         """
@@ -200,7 +201,7 @@ class DobotApi:
 
             return error_id, result
         except Exception as e:
-            self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed, Please reconnect robot')
+            self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed{e}, Please reconnect robot')
 
     def close(self):
         """
