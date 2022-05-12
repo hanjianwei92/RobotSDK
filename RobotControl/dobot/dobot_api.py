@@ -179,7 +179,7 @@ class DobotApi:
         except Exception as e:
             self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed {e}, Please reconnect robot")
 
-    def wait_reply(self):
+    def wait_reply(self, wait_error_info: bool = True):
         """
         Read the return value
         """
@@ -198,7 +198,10 @@ class DobotApi:
             else:
                 for value in result_data.split(','):
                     result.append(float(value))
-
+            if wait_error_info is True:
+                error_info = self.GetErrorID()
+                if error_info != "":
+                    raise Exception(error_info)
             return error_id, result
         except Exception as e:
             self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed{e}, Please reconnect robot')
@@ -209,6 +212,34 @@ class DobotApi:
         """
         if self.socket_dobot != 0:
             self.socket_dobot.close()
+
+    def GetErrorID(self):
+        """
+        Get robot error code
+        """
+        string = "GetErrorID()"
+        self.send_data(string)
+        data = self.socket_dobot.recv(1024)
+        data_str = str(data, encoding="utf-8")
+        self.log(f'Receive from 192.168.5.1:{self.port}: {data_str}')
+        error_data = data_str.split('{')[1].split('}')[0]
+        error_list = json.loads(error_data)
+        error_info = ""
+        if error_list[0]:
+            for i in error_list[0]:
+                if i in self.alarm_controller_dict.keys() and i != 0:
+                    error_info += f"Type: Controller Error \n" \
+                                  f"INFO:{self.alarm_controller_dict[i]['zh_CN']['description']}\n" \
+                                  f"Solution:{self.alarm_controller_dict[i]['zh_CN']['solution']}\n"
+
+        for m in range(1, len(error_list)):
+            if error_list[m]:
+                for n in range(len(error_list[m])):
+                    error_info += f"Type: Servo Error \n" \
+                                  f"INFO:{self.alarm_servo_dict[n]['zh_CN']['description']}\n" \
+                                  f"Solution:{self.alarm_servo_dict[n]['zh_CN']['solution']}\n"
+
+        return error_info
 
     def __del__(self):
         self.close()
@@ -513,35 +544,6 @@ class DobotApiDashboard(DobotApi):
         self.send_data(string)
         return self.wait_reply()
 
-    def GetErrorID(self):
-        """
-        Get robot error code
-        """
-        string = "GetErrorID()"
-        self.send_data(string)
-        data = self.socket_dobot.recv(1024)
-        data_str = str(data, encoding="utf-8")
-        self.log(f'Receive from 192.168.5.1:{self.port}: {data_str}')
-        error_data = data_str.split('{')[1].split('}')[0]
-        error_list = json.loads(error_data)
-        error_info = ""
-        if error_list[0]:
-            for i in error_list[0]:
-                if i in self.alarm_controller_dict.keys():
-                    error_info += f"Type: Controller Error \n" \
-                                  f"INFO:{self.alarm_controller_dict[i]['zh_CN']['description']}\n" \
-                                  f"Solution:{self.alarm_controller_dict[i]['zh_CN']['solution']}\n"
-
-        for m in range(1, len(error_list)):
-            if error_list[m]:
-                for n in range(len(error_list[m])):
-                    error_info += f"Type: Servo Error \n" \
-                                  f"INFO:{self.alarm_servo_dict[n]['zh_CN']['description']}\n" \
-                                  f"Solution:{self.alarm_servo_dict[n]['zh_CN']['solution']}\n"
-
-        self.ClearError()
-        return error_info
-
     def ModbusCreate(self, ip, port, slave_id, isRTU):
         string = f"ModbusCreate({ip:s},{port:d},{slave_id:d},{isRTU:d})"
         self.send_data(string)
@@ -655,7 +657,7 @@ class DobotApiMove(DobotApi):
         string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
             pos[0], pos[1], pos[2], pos[3], pos[4], pos[5])
         self.send_data(string)
-        return self.wait_reply()
+        return self.wait_reply(False)
 
     def MovL(self, pos: list):
         """
@@ -673,7 +675,7 @@ class DobotApiMove(DobotApi):
         string = "MovL({:f},{:f},{:f},{:f},{:f},{:f})".format(
             pos[0], pos[1], pos[2], pos[3], pos[4], pos[5])
         self.send_data(string)
-        return self.wait_reply()
+        return self.wait_reply(False)
 
     def JointMovJ(self, joint: list):
         """
@@ -683,7 +685,7 @@ class DobotApiMove(DobotApi):
         string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
             joint[0], joint[1], joint[2], joint[3], joint[4], joint[5])
         self.send_data(string)
-        return self.wait_reply()
+        return self.wait_reply(False)
 
     def Jump(self):
         print("待定")
@@ -696,7 +698,7 @@ class DobotApiMove(DobotApi):
         string = "RelMovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
             offset1, offset2, offset3, offset4, offset5, offset6)
         self.send_data(string)
-        return self.wait_reply()
+        return self.wait_reply(False)
 
     def RelMovL(self, offsetX, offsetY, offsetZ):
         """
@@ -707,7 +709,7 @@ class DobotApiMove(DobotApi):
         """
         string = "RelMovL({:f},{:f},{:f})".format(offsetX, offsetY, offsetZ)
         self.send_data(string)
-        return self.wait_reply()
+        return self.wait_reply(False)
 
     def MovLIO(self, x, y, z, a, b, c, *dynParams):
         """
