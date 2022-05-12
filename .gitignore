@@ -3,3 +3,4 @@ RobotControl/dobot.log
 build
 dist
 .idea
+**/__pycache__
