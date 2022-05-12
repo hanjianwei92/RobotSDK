@@ -174,7 +174,6 @@ class DobotApi:
 
     def send_data(self, string):
         try:
-            self.log(f"Send to 192.168.5.1:{self.port}: {string}")
             self.socket_dobot.send(str.encode(string, 'utf-8'))
         except Exception as e:
             self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed {e}, Please reconnect robot")
@@ -187,7 +186,6 @@ class DobotApi:
         try:
             data = self.socket_dobot.recv(1024)
             data_str = str(data, encoding="utf-8")
-            self.log(f'Receive from 192.168.5.1:{self.port}: {data_str}')
             result = []
             error_id = int(data_str.split(',')[0])
             if error_id != 0:
@@ -221,7 +219,6 @@ class DobotApi:
         self.send_data(string)
         data = self.socket_dobot.recv(1024)
         data_str = str(data, encoding="utf-8")
-        self.log(f'Receive from 192.168.5.1:{self.port}: {data_str}')
         error_data = data_str.split('{')[1].split('}')[0]
         error_list = json.loads(error_data)
         error_info = ""
@@ -758,8 +755,6 @@ class DobotApiMove(DobotApi):
         # example： MovJIO(0,50,0,0,0,0,(0,50,1,0),(1,1,2,1))
         string = "MovJIO({:f},{:f},{:f},{:f},{:f},{:f}".format(
             x, y, z, a, b, c)
-        self.log("Send to 192.168.5.1:29999:" + string)
-        print(type(dynParams), dynParams)
         for params in dynParams:
             print(type(params), params)
             string = string + ",{{{:d},{:d},{:d},{:d}}}".format(
