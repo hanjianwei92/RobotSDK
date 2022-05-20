@@ -178,7 +178,7 @@ class DobotApi:
         except Exception as e:
             self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed {e}, Please reconnect robot")
 
-    def wait_reply(self, wait_error_info: bool = True):
+    def wait_reply(self, wait_error_info: bool = True) -> (int, list):
         """
         Read the return value
         """
@@ -536,8 +536,12 @@ class DobotApiDashboard(DobotApi):
             "F32" : reads 32-bit single-precision floating-point number (4 bytes, occupying 2 registers)
             "F64" : reads 64-bit double precision floating point number (8 bytes, occupying 4 registers)
         """
-        string = "SetHoldRegs({:d},{:d},{:d},{:d},{:s})".format(
-            id, addr, count, table, type)
+        value = "{"
+        for v in table:
+            value += f"{v:d},"
+        value = value.strip(",")
+        value += "}"
+        string = f"SetHoldRegs({id:d},{addr:d},{count:d},{value:s},{type:s})"
         self.send_data(string)
         return self.wait_reply()
 
@@ -551,7 +555,7 @@ class DobotApiDashboard(DobotApi):
         self.send_data(string)
         return self.wait_reply()
 
-    def SetTerminal485(self, baudRate, dataLen=8, parityBit='N', stopBit=1):
+    def SetTerminal485(self, baudRate=115200, dataLen=8, parityBit='N', stopBit=1):
         string = f"SetTerminal485({baudRate:d},{dataLen:d},{parityBit:s},{stopBit:d})"
         self.send_data(string)
         return self.wait_reply()
