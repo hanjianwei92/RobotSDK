@@ -545,6 +545,21 @@ class DobotApiDashboard(DobotApi):
         self.send_data(string)
         return self.wait_reply()
 
+    def SetCoils(self, id, addr, count, table):
+        value = "{"
+        for v in table:
+            value += f"{v:d},"
+            value = value.strip(",")
+        value += "}"
+        string = f"SetCoils({id:d},{addr:d},{count:d},{value:s})"
+        self.send_data(string)
+        return self.wait_reply()
+
+    def GetCoils(self, id, addr, count):
+        string = f"SetCoils({id:d},{addr:d},{count:d})"
+        self.send_data(string)
+        return self.wait_reply()
+
     def ModbusCreate(self, ip, port, slave_id, isRTU):
         string = f"ModbusCreate({ip:s},{port:d},{slave_id:d},{isRTU:d})"
         self.send_data(string)
