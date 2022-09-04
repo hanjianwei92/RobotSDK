@@ -37,7 +37,7 @@ class DobotControl:
         self.set_joint_max_vel_and_acc(joint_max_vel=joint_max_vel, joint_max_acc=joint_max_acc)
         self.set_end_max_vel_and_acc(line_max_vel=line_max_vel, line_max_acc=line_max_acc)
 
-    def init_robot_by_default(self, collision_level=2):
+    def init_robot_by_default(self, collision_level=3):
         """
         以默认参数初始化机械臂
         """
@@ -226,7 +226,8 @@ class DobotControl:
         rt_final = self.end_to_base(final_target_in_flange)
         pos = rt_final[:3, 3].squeeze().tolist()
         ori = Rotation.from_matrix(rt_final[:3, :3]).as_euler('xyz', degrees=True).squeeze().tolist()
-        final_target_joint = self.robot_ctl.InverseSolution(pos + ori)[1]
+        curr_point_joint = self.get_current_waypoint()[0]
+        final_target_joint = self.robot_ctl.InverseSolution(pos + ori + [0, 0, 1] + curr_point_joint)[1]
         if final_target_joint is None:
             self.log.error_show("逆解失败")
             self.robot_ctl.ClearError()

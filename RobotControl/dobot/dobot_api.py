@@ -604,7 +604,8 @@ class DobotApiDashboard(DobotApi):
         pos[0] *= 1000.0
         pos[1] *= 1000.0
         pos[2] *= 1000.0
-        string = f"InverseSolution({pos[0]:f},{pos[1]:f},{pos[2]:f},{pos[3]:f},{pos[4]:f},{pos[5]:f},0,0)"
+        string = f"InverseSolution({pos[0]:f},{pos[1]:f},{pos[2]:f},{pos[3]:f},{pos[4]:f},{pos[5]:f},{pos[6]:d}," \
+                 f"{pos[7]:d},{pos[8]:d},{{{pos[9]},{pos[10]},{pos[11]},{pos[12]},{pos[13]},{pos[14]}}})"
         self.send_data(string)
         return self.wait_reply()
 
