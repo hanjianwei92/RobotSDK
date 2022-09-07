@@ -29,6 +29,7 @@ class DobotControl:
         self.log = logger
         self.robot_ctl = DobotApiDashboard(ip, port_ctl, logger)
         self.robot_move = DobotApiMove(ip, port_move, logger)
+        self.robot_state = DobotApiState()
 
         # 用户工具描述
         self.tool_end = tool_end
@@ -99,23 +100,29 @@ class DobotControl:
         if self.robot_ctl.SpeedL(line_max_vel)[0]:
             self.log.error_show(f"设置笛卡尔空间速度失败")
 
-    def get_current_waypoint(self):
+    def get_current_waypoint(self, real_time=False):
         """
         得到当前法兰盘位姿（基座标系下）
-        :return: 六个关节角 'joint': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0] °
+        :return: 六个关节角 'joint': [90.0, 10.0, 0.0, 100.0, 0.0, 0.0] °
                       位置 'pos': 位置[x, y, z] m
                       姿态 'ori': 姿态[Rx, Ry, Rz] °
         """
-        error_id1, joint_angle = self.robot_ctl.GetAngle()
-        error_id2, pos = self.robot_ctl.GetPose()
-        if error_id1 == 0 or error_id2 == 0:
-            joint = joint_angle
-            flange_pose = pos[:3]
-            flange_ori = pos[3:]
-            return joint, flange_pose, flange_ori
+        if real_time is False:
+            error_id1, joint_angle = self.robot_ctl.GetAngle()
+            error_id2, pos = self.robot_ctl.GetPose()
+            if error_id1 == 0 or error_id2 == 0:
+                joint = joint_angle
+                flange_pose = pos[:3]
+                flange_ori = pos[3:]
+                return joint, flange_pose, flange_ori
+            else:
+                self.log.error_show(f"获取当前位姿失败，错误代码为{error_id1}、{error_id2}")
+                raise Exception()
         else:
-            self.log.error_show(f"获取当前位姿失败，错误代码为{error_id1}、{error_id2}")
-            raise Exception()
+            robot_state = self.robot_state.get_robot_state()
+            return robot_state['q_actual'].squeeze().tolist(), \
+                   (robot_state['tool_vector_actual'].squeeze()[0:3] / 1000.0).tolist(), \
+                   (robot_state['tool_vector_actual'].squeeze()[3:6]).tolist()
 
     def get_tool_end_pos(self):
         """
@@ -323,7 +330,13 @@ class DobotControl:
 
 if __name__ == "__main__":
     robot = DobotControl()
-    _, curr_pos, curr_ori = robot.get_current_waypoint()
+    time.sleep(3)
+    curr_joint, curr_pos, curr_ori = robot.get_current_waypoint()
+    print(f"curr_robot is {curr_joint, curr_pos, curr_ori}")
+
+    curr_joint1, curr_pos1, curr_ori1 = robot.get_current_waypoint(True)
+    print(f"retm_robot is {curr_joint1, curr_pos1, curr_ori1}")
+
     rt_o = robot.pos_to_rmatrix(curr_pos, curr_ori)
     pos = [-0.1044132, 0.773865, 0.11709, 176.05, -1.958, -22.7447]
     rt = robot.pos_to_rmatrix(pos[:3], pos[3:])

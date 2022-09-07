@@ -2,8 +2,11 @@ import socket
 import numpy as np
 import time
 import json
+import struct
 from .alarm_controller import alarm_controller_list
 from .alarm_servo import alarm_servo_list
+from multiprocessing import Process, Array
+from ctypes import c_int32
 
 # Port Feedback
 MyType = np.dtype([(
@@ -1015,3 +1018,45 @@ class DobotApiMove(DobotApi):
         string = string + ")"
         self.send_data(string)
         return self.wait_reply()
+
+
+class DobotApiState(Process):
+    def __init__(self):
+        super().__init__()
+        self.data_array = Array(c_int32, 360)
+        self.daemon = True
+        self.start()
+
+    def run(self) -> None:
+        info_socket = socket.socket()
+        try:
+            info_socket.connect(("192.168.5.1", 30004))
+        except socket.error:
+            print(f"Unable to set socket connection use port 3004 is {socket.error} !")
+            return
+
+        hasRead = 0
+        while True:
+            data = bytes()
+            while hasRead < 1440:
+                temp = info_socket.recv(1440 - hasRead)
+                if len(temp) > 0:
+                    hasRead += len(temp)
+                    data += temp
+            hasRead = 0
+            self.data_array[0:360] = struct.unpack('360i', data)
+            time.sleep(0.005)
+
+    def get_robot_state(self):
+        with self.data_array.get_lock():
+            robot_state = struct.pack('360i', *self.data_array)
+            return np.frombuffer(robot_state, dtype=MyType)
+
+# if __name__ == "__main__":
+# a = ReadRobotState()
+# a.start()
+# while True:
+#     time.sleep(0.05)
+#     robot = a.get_robot_state()
+#     print(robot['tool_vector_actual'])
+#     print(robot['q_actual'])
