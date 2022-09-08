@@ -100,7 +100,7 @@ class DobotControl:
         if self.robot_ctl.SpeedL(line_max_vel)[0]:
             self.log.error_show(f"设置笛卡尔空间速度失败")
 
-    def get_current_waypoint(self, real_time=False):
+    def get_current_waypoint(self, real_time=True):
         """
         得到当前法兰盘位姿（基座标系下）
         :return: 六个关节角 'joint': [90.0, 10.0, 0.0, 100.0, 0.0, 0.0] °
@@ -119,7 +119,7 @@ class DobotControl:
                 self.log.error_show(f"获取当前位姿失败，错误代码为{error_id1}、{error_id2}")
                 raise Exception()
         else:
-            robot_state = self.robot_state.get_robot_state()
+            robot_state = self.robot_state.get_robot_state_local()
             return robot_state['q_actual'].squeeze().tolist(), \
                    (robot_state['tool_vector_actual'].squeeze()[0:3] / 1000.0).tolist(), \
                    (robot_state['tool_vector_actual'].squeeze()[3:6]).tolist()
