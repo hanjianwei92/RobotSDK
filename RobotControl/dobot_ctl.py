@@ -108,7 +108,7 @@ class DobotControl:
                       位置 'pos': 位置[x, y, z] m
                       姿态 'ori': 姿态[Rx, Ry, Rz] °
         """
-        if real_time is False:
+        if real_time is False or self.robot_state_array is None:
             error_id1, joint_angle = self.robot_ctl.GetAngle()
             error_id2, pos = self.robot_ctl.GetPose()
             if error_id1 == 0 or error_id2 == 0:
