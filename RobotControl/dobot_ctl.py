@@ -12,7 +12,8 @@ class DobotControl:
                  ip='192.168.5.1',
                  port_ctl=29999, port_move=30003,
                  joint_max_vel=50, joint_max_acc=50,
-                 line_max_vel=50, line_max_acc=50):
+                 line_max_vel=50, line_max_acc=50,
+                 state_data_array=None):
         """
         :param default_robot: 是否以默认参数初始化机械臂
         :param tool_end: 末端工具定义输入为字典dict(pos = (x,y,z),ori = (Rx, Ry, Rz)）
@@ -29,7 +30,7 @@ class DobotControl:
         self.log = logger
         self.robot_ctl = DobotApiDashboard(ip, port_ctl, logger)
         self.robot_move = DobotApiMove(ip, port_move, logger)
-        self.robot_state = DobotApiState()
+        self.robot_state_array = state_data_array
 
         # 用户工具描述
         self.tool_end = tool_end
@@ -119,10 +120,12 @@ class DobotControl:
                 self.log.error_show(f"获取当前位姿失败，错误代码为{error_id1}、{error_id2}")
                 raise Exception()
         else:
-            robot_state = self.robot_state.get_robot_state_local()
-            return robot_state['q_actual'].squeeze().tolist(), \
-                   (robot_state['tool_vector_actual'].squeeze()[0:3] / 1000.0).tolist(), \
-                   (robot_state['tool_vector_actual'].squeeze()[3:6]).tolist()
+            with self.robot_state_array.get_lock():
+                robot_state = struct.pack('360i', *self.robot_state_array)
+                robot_state = np.frombuffer(robot_state, dtype=MyType)
+                return robot_state['q_actual'].squeeze().tolist(), \
+                       (robot_state['tool_vector_actual'].squeeze()[0:3] / 1000.0).tolist(), \
+                       (robot_state['tool_vector_actual'].squeeze()[3:6]).tolist()
 
     def get_tool_end_pos(self):
         """

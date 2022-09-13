@@ -5,8 +5,8 @@ import json
 import struct
 from .alarm_controller import alarm_controller_list
 from .alarm_servo import alarm_servo_list
-from multiprocessing import Process, Array
-from ctypes import c_int32
+from multiprocessing import Process, Array, Value
+from ctypes import c_int32, c_int8
 
 # Port Feedback
 MyType = np.dtype([(
@@ -828,7 +828,7 @@ class DobotApiMove(DobotApi):
         string = "ServoP({:f},{:f},{:f},{:f},{:f},{:f})".format(
             x, y, z, a, b, c)
         self.send_data(string)
-        return self.wait_reply()
+        # return self.wait_reply()
 
     def MoveJog(self, axis_id, *dynParams):
         """
@@ -1024,7 +1024,9 @@ class DobotApiState(Process):
     def __init__(self):
         super().__init__()
         self.data_array = Array(c_int32, 360)
+        self.error_state = Value(c_int8, 0)
         self.daemon = True
+        self.start()
 
     def run(self) -> None:
         info_socket = socket.socket()
@@ -1044,28 +1046,33 @@ class DobotApiState(Process):
                     data += temp
             hasRead = 0
             self.data_array[0:360] = struct.unpack('360i', data)
-
-    def get_robot_state_local(self):
-        try:
-            info_socket = socket.socket()
-            info_socket.connect(("192.168.5.1", 30004))
-        except socket.error:
-            print(f"Unable to set socket connection use port 30004 is {socket.error} !")
-            return
-        hasRead = 0
-        data = bytes()
-        while hasRead < 1440:
-            temp = info_socket.recv(1440 - hasRead)
-            if len(temp) > 0:
-                hasRead += len(temp)
-                data += temp
-        info_socket.close()
-        return np.frombuffer(data, dtype=MyType)
+            robot_state = np.frombuffer(data, dtype=MyType)
+            if robot_state['error_status'][0] == 1:
+                self.error_state.value = 1
 
     def get_robot_state(self):
         with self.data_array.get_lock():
             robot_state = struct.pack('360i', *self.data_array)
             return np.frombuffer(robot_state, dtype=MyType)
+
+
+def get_robot_state_local():
+    try:
+        info_socket = socket.socket()
+        info_socket.connect(("192.168.5.1", 30004))
+    except socket.error:
+        print(f"Unable to set socket connection use port 30004 is {socket.error} !")
+        return
+    hasRead = 0
+    data = bytes()
+    while hasRead < 1440:
+        temp = info_socket.recv(1440 - hasRead)
+        if len(temp) > 0:
+            hasRead += len(temp)
+            data += temp
+    info_socket.close()
+    return np.frombuffer(data, dtype=MyType)
+
 
 # if __name__ == "__main__":
 #     a = DobotApiState()
@@ -1073,6 +1080,9 @@ class DobotApiState(Process):
 #         time.sleep(0.5)
 #         c = time.time()
 #         robot = a.get_robot_state()
+#         # robot = get_robot_state_local()
 #         # print(f"get time is {time.time() - c}")
 #         # print(robot['tool_vector_actual'])
 #         print(robot['q_actual'][0][5])
+#         print(robot['robot_mode'][0], robot['error_status'][0])
+#         print(f"errorstate is {a.error_state.value}")
