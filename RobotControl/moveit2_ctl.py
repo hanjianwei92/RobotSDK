@@ -19,29 +19,29 @@ from .dobot.cas_logger import CasLogger
 
 
 class Moveit2Control:
-    def __init__(self, 
+    def __init__(self,
                  tool_end=None,
                  logger=None,
                  joint_max_vel=50, joint_max_acc=50,
                  line_max_ve0l=50, line_max_acc=50):
-        
+
         self.robot_brand = 'moveit2'
         if tool_end is None:
             tool_end = dict(pos=(0, 0, 0), ori=(0, 0, 0))
-            
+
         if logger is None:
-            logger = CasLogger("dobot.log", 
-                              info_queue=multiprocessing.Manager().Queue(1), 
+            logger = CasLogger("dobot.log",
+                              info_queue=multiprocessing.Manager().Queue(1),
                               error_queue=multiprocessing.Manager().Queue(1))
 
 
         # self.moveit_process = subprocess.Popen(['ros2', 'launch', 'casia_robot', 'demo.launch.py'])
-        
+
         self.log: CasLogger = logger
         self.moveit_ctl :MoveIt2  = None
         self.tool_end:dict = tool_end
         self.init_moveit()
-        
+
     def init_moveit(self):
         rclpy.init(args=sys.argv)
         node = Node("moveit_group")
@@ -56,7 +56,7 @@ class Moveit2Control:
                         callback_group=ReentrantCallbackGroup(),
                         follow_joint_trajectory_action_name='/arm_group_controller/follow_joint_trajectory'
                     )
-        
+
         executor = rclpy.executors.MultiThreadedExecutor()
         executor.add_node(node)
         executor_thread = Thread(target=executor.spin, daemon=True, args=())
@@ -66,7 +66,7 @@ class Moveit2Control:
         # self.moveit_process.kill()
         rclpy.shutdown()
         exit(0)
-        
+
     def get_current_waypoint(self):
         """
         得到当前法兰盘位姿（基座标系下）
@@ -79,7 +79,7 @@ class Moveit2Control:
         pos, ori = self.moveit_ctl.get_current_pose("Link6")
         rpy = Rotation.from_quat(ori).as_euler('xyz',degrees=True)
         return joints.tolist(), pos, rpy
-    
+
     def get_tool_end_pos(self):
         """
         得到工具末端在基坐标系下的坐标
@@ -95,7 +95,7 @@ class Moveit2Control:
         ori = Rotation.from_matrix(tool_pos_mat_on_base[:3, :3]).as_euler('xyz', degrees=True)
         # self.log_info(f"工具末端当前位姿（在基坐标系）是{pos},姿态是{ori}")
         return pos, ori
-    
+
     def end_to_base(self,
                     waypoints_end_rt_mat,
                     curr_pos=None,
@@ -112,7 +112,7 @@ class Moveit2Control:
         rt_end_to_base = self.pos_to_rmatrix(curr_pos, curr_ori)
         rt_waypoints_base = rt_end_to_base.dot(np.array(waypoints_end_rt_mat))
         return rt_waypoints_base
-    
+
     @staticmethod
     def pos_to_rmatrix(pos: list, ori: list):
         """
@@ -126,7 +126,7 @@ class Moveit2Control:
         rt_mat[:3, :3] = r_matrix
         rt_mat[:3, 3:] = np.reshape(pos, (3, 1))
         return rt_mat
-    
+
     def get_move_to_waypoints(self, waypoints: list = None, coor: RobotCoorStyle = RobotCoorStyle.base, offset=0.0):
         """
         转换特定坐标系下的目标点位机器人关节运动坐标
@@ -170,16 +170,16 @@ class Moveit2Control:
             last_waypoint_joint = np.array(waypoints_joint[cnt])/ 180.0 * np.pi
             # 逆解到关节空间
             waypoint_joint = self.moveit_ctl.get_ik_result(flange_pos_on_base, flange_ori_on_base, "Link6", last_waypoint_joint.tolist())
-            waypoint_joint =  np.array(waypoint_joint)/ np.pi * 180.0 
+            waypoint_joint =  np.array(waypoint_joint)/ np.pi * 180.0
             # 逆解到关节空间
-            
+
             if waypoint_joint is None:
                 self.log.error_show("逆解失败")
                 return None
 
             waypoints_joint.append(waypoint_joint.tolist())
         return waypoints_joint[1:]
-    
+
     def move_offset(self, offset, move_style: RobotMoveStyle = RobotMoveStyle.move_joint_line):
         """
         向目标法线方向移动偏移距离
@@ -190,7 +190,7 @@ class Moveit2Control:
         ori = Rotation.from_matrix(rt_final[:3, :3]).as_quat().squeeze().tolist()
         curr_point_joint = np.array(self.get_current_waypoint()[0]) /180.0 * np.pi
         final_target_joint = self.moveit_ctl.get_ik_result(pos, ori, "Link6", curr_point_joint.tolist())
-        final_target_joint = np.array(final_target_joint) /np.pi *180.0 
+        final_target_joint = np.array(final_target_joint) /np.pi *180.0
         if final_target_joint is None:
             self.log.error_show("逆解失败")
             return
@@ -274,17 +274,52 @@ class Moveit2Control:
         :return:
         """
         return self.moveit_ctl.cancel_current_motion()
-        
+
     def disconnect_robot(self):
         pass
-    
+
     def start_drag(self):
         pass
-    
+
     def clear_error(self):
         pass
-    
-   
+
+
+class GripperMoveit:
+    def __init__( self ,init_rclpy = False):
+        self.gripper_moveit = None
+        self.init_gripper_moveit(init_rclpy)
+
+    def init_gripper_moveit(self, init_rclpy = False):
+        if init_rclpy :
+          rclpy.init(args=sys.argv)
+        node = Node("gripper_moveit_group")
+        self.gripper_moveit = GripperCommand(
+                node = node,
+                gripper_joint_names = ['dh_gripper_finger1_joint'],
+                open_gripper_joint_positions= [-37.0],
+                closed_gripper_joint_positions =  [0.0],
+                gripper_command_action_name =  '/hand_group_controller/gripper_cmd'
+        )
+
+        executor = rclpy.executors.MultiThreadedExecutor()
+        executor.add_node(node)
+        executor_thread = Thread(target=executor.spin, daemon=True, args=())
+        executor_thread.start()
+
+    def get_current_position(self):
+        return abs(self.gripper_moveit.get_gripper_joint_position[0]) / np.pi * 180.0 / 37.0 * 0.145
+
+    def grasp(self, pos=0.0, force=40.0):
+        pos = 0.0 if pos is None else pos
+        force = 60.0 if force is None else force
+
+        self.gripper_moveit.gripper_go(-(pos / 0.145 * 37.0 / 180.0 * np.pi), float(force))
+
+    def release(self, pos=0.145):
+        pos=0.145 if pos is None else pos
+        self.gripper_moveit.gripper_go(-(pos / 0.145 * 37.0 / 180.0 * np.pi), 100.0)
+
 if __name__ == "__main__":
     moveit = Moveit2Control()
     while True:
@@ -295,4 +330,10 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"{e} moveit.close_moveit()")
 
-           
+    # gripper = GripperMoveit()
+    # while True:
+    #     key = input()
+    #     if key == " ":
+    #         gripper.grasp(0.145, 100.0)
+    #     else:
+    #         gripper.grasp(0.0, 100.0)
