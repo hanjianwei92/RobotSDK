@@ -39,7 +39,7 @@ class DobotControl:
         self.set_joint_max_vel_and_acc(joint_max_vel=joint_max_vel, joint_max_acc=joint_max_acc)
         self.set_end_max_vel_and_acc(line_max_vel=line_max_vel, line_max_acc=line_max_acc)
 
-    def init_robot_by_default(self, collision_level=3):
+    def init_robot_by_default(self, collision_level=1):
         """
         以默认参数初始化机械臂
         """
@@ -59,8 +59,8 @@ class DobotControl:
             self.log.error_show("机械臂初始化错误")
 
     def set_tool(self,
-                 payload=2.0,
-                 inertia=0.1):
+                 payload=2.5,
+                 inertia=0.7):
         """
         设置碰撞等级与工具动力学参数
         :param payload, # 负载（kg）
