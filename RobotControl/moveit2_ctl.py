@@ -2,7 +2,6 @@ import time
 import numpy as np
 import sys
 import multiprocessing
-import subprocess
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup

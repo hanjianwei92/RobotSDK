@@ -27,7 +27,7 @@ class AuboControl:
         """
         self.robot_brand = 'aubo'
         if tool_end is None:
-            tool_end = dict(pos=(0, 0, 0.296), ori=(1, 0, 0, 0))
+            tool_end = dict(pos=(0, 0, 0), ori=(1, 0, 0, 0))
 
         if info_queue is None or error_queue is None:
             self.info_queue = Queue()
