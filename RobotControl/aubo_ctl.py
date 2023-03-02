@@ -5,6 +5,7 @@ from queue import Queue
 from .coor_and_move_style import *
 import datetime
 import platform
+
 if platform.system() == "Windows":
     from .aubo_windows import *
 else:
@@ -21,13 +22,13 @@ class AuboControl:
                  info_queue=None, error_queue=None):
         """
         :param default_robot: 是否以默认参数初始化机械臂
-        :param tool_end: 末端工具定义输入为字典dict(pos = (x,y,z),ori = (w, x, y, z)）
+        :param tool_end: 末端工具定义输入为字典dict(pos = (x,y,z),ori = (rx, ry, rz)）
         :param ip: 机械臂IP
         :param port: 机械臂Port
         """
         self.robot_brand = 'aubo'
         if tool_end is None:
-            tool_end = dict(pos=(0, 0, 0), ori=(1, 0, 0, 0))
+            tool_end = dict(pos=(0, 0, 0), ori=(0, 0, 0))
 
         if info_queue is None or error_queue is None:
             self.info_queue = Queue()
@@ -128,12 +129,15 @@ class AuboControl:
             self.log_error(f"RobotError 设置工具动力学参数 错误代码为{ret}")
             return None
         # 设置工具运动学参数
-        ret = self.robot.set_tool_kinematics_param(self.tool_end)
+        tool_end_quat = Rotation.from_euler("xyz", self.tool_end["ori"], degrees=True).as_quat()
+        tool_end = {"pos": self.tool_end["pos"],
+                    "ori": [tool_end_quat[3], tool_end_quat[0], tool_end_quat[1], tool_end_quat[2]]}
+        ret = self.robot.set_tool_kinematics_param(tool_end)
         if ret != RobotErrorType.RobotError_SUCC:
             self.log_error(f"RobotError 设置碰工具运动学参数 错误代码为{ret}")
             return None
         # # 设置工具末端参数
-        ret = self.robot.set_tool_end_param(self.tool_end)
+        ret = self.robot.set_tool_end_param(tool_end)
         if ret != RobotErrorType.RobotError_SUCC:
             self.log_error(f"RobotError 设置碰工具末端参数 错误代码为{ret}")
             return None
@@ -167,22 +171,23 @@ class AuboControl:
         self.robot.set_end_max_line_velc(line_max_vel)
         self.robot.set_end_max_line_acc(line_max_acc)
         self.robot.set_end_max_angle_velc(_angular_max_vel)
-        self.robot.set_end_max_line_acc(_angular_max_acc)
+        self.robot.set_end_max_angle_acc(_angular_max_acc)
 
     def get_current_waypoint(self):
         """
         得到当前法兰盘位姿（基座标系下）
-        :return: 六个关节角 'joint': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-                      位置 'pos': [-0.06403157614989634, -0.4185973810159096, 0.816883228463401]
-                      姿态 'ori': [-0.11863209307193756, 0.3820514380931854, 0.0, 0.9164950251579285]
+        :return: 六个关节角 'joint': [10.0, 90.0, 0.0, 90.0, 180.0, 10.0] °
+                      位置 'pos': [x, y, z] 米
+                      姿态 'ori': [rx, ry, rz] 欧拉角度
         """
         waypoint = self.robot.get_current_waypoint()
         if waypoint is None:
             self.log_error("获取当前位姿错误")
             return None
-        joint = waypoint['joint']
+        joint = np.array(waypoint['joint']) / np.pi * 180.0
         end_pos = waypoint['pos']
-        end_ori = waypoint['ori']
+        end_ori = Rotation.from_quat([waypoint['ori'][1], waypoint['ori'][2], waypoint['ori'][3], waypoint['ori'][0]]) \
+            .as_euler("xyz", degrees=True)
         return joint, end_pos, end_ori
 
     def get_tool_end_pos(self):
@@ -190,14 +195,14 @@ class AuboControl:
         得到工具末端在基坐标系下的坐标
         :return: list(tool_pos_on_base['pos']), list(tool_pos_on_base['ori'])
         """
-        current_pos = self.robot.get_current_waypoint()
-        tool_desc = self.tool_end
+        _, flange_pose, flange_ori = self.get_current_waypoint()
         # 得到法兰盘工具末端点相对于基座坐标系中的位置
-        tool_pos_on_base = self.robot.base_to_base_additional_tool(current_pos['pos'],
-                                                                   current_pos['ori'],
-                                                                   tool_desc)
-        pos = list(tool_pos_on_base['pos'])
-        ori = list(tool_pos_on_base['ori'])
+        curr_pos_mat = self.pos_to_rmatrix(flange_pose, flange_ori)
+        tool_pos_mat_on_flange = self.pos_to_rmatrix(list(self.tool_end['pos']), list(self.tool_end['ori']))
+        tool_pos_mat_on_base = curr_pos_mat @ tool_pos_mat_on_flange
+
+        pos = tool_pos_mat_on_base[:3, 3:]
+        ori = Rotation.from_matrix(tool_pos_mat_on_base[:3, :3]).as_euler('xyz', degrees=True)
         # self.log_info(f"工具末端当前位姿（在基坐标系）是{pos},姿态是{ori}")
         return pos, ori
 
@@ -209,7 +214,7 @@ class AuboControl:
         如果使用默认值，则讲法兰坐标系下的点转换值基座标系下
         :param waypoints_end_rt_mat: 特定坐标系下目标的rt矩阵
         :param curr_pos: 特定坐标系在基座标系下的位置[x, y, z] m
-        :param curr_ori: 特定坐标系在基座标系下姿态[w, x, y, z]
+        :param curr_ori: 特定坐标系在基座标系下姿态[rx, ry, rz] °
         :return: 基坐标系下，目标位姿矩阵
         """
         if curr_pos is None and curr_ori is None:
@@ -223,11 +228,11 @@ class AuboControl:
         """
         位姿转换为旋转平移矩阵
         :param pos: 位置[x,y,z]
-        :param ori: 姿态四元数[w, x, y, z]
+        :param ori: 姿态[Rx, Ry, Rz]
         :return: RT旋转平移矩阵
         """
         rt_mat = np.eye(4)
-        r_matrix = Rotation.from_quat([ori[1], ori[2], ori[3], ori[0]]).as_matrix()
+        r_matrix = Rotation.from_euler('xyz', ori, degrees=True).as_matrix()
         rt_mat[:3, :3] = r_matrix
         rt_mat[:3, 3:] = np.reshape(pos, (3, 1))
         return rt_mat
@@ -246,15 +251,15 @@ class AuboControl:
 
         waypoints_joint = []
         # 当前机器人坐标
-        flanger_in_base = self.get_current_waypoint()
-        tool_end_in_end = self.get_tool_end_pos()
-        current_waypoint_joint = flanger_in_base[0]
+        flange_in_base = self.get_current_waypoint()
+        tool_end_in_base = self.get_tool_end_pos()
+        current_waypoint_joint = flange_in_base[0]
         waypoints_joint.append(current_waypoint_joint)
         if coor == RobotCoorStyle.tool_end:
-            curr_pos, curr_ori = tool_end_in_end
+            curr_pos, curr_ori = tool_end_in_base
         else:
-            curr_pos = flanger_in_base[1]
-            curr_ori = flanger_in_base[2]
+            curr_pos = flange_in_base[1]
+            curr_ori = flange_in_base[2]
 
         for cnt in range(len(waypoints)):
             if coor == RobotCoorStyle.base:
@@ -268,24 +273,23 @@ class AuboControl:
                 self.log_error("转换到基座标系失败")
                 return None
 
-            flanker_pos_on_end = np.array(
+            flange_pos_on_end = np.array(
                 [-self.tool_end['pos'][0], -self.tool_end['pos'][1], -(self.tool_end['pos'][2] + offset),
                  1]).reshape((4, 1))
-            flanker_pos_on_base = np.dot(tool_waypoint_base, flanker_pos_on_end)[:3]
-
-            quat_flanker_on_base = Rotation.from_matrix(tool_waypoint_base[:3, :3]).as_quat()
-            quat_flanker_on_base = [quat_flanker_on_base[3], quat_flanker_on_base[0], quat_flanker_on_base[1],
-                                    quat_flanker_on_base[2]]
-
+            flange_pos_on_base = np.dot(tool_waypoint_base, flange_pos_on_end)[:3].squeeze().tolist()
+            flange_ori_on_base = Rotation.from_matrix(tool_waypoint_base[:3, :3]).as_quat().squeeze().tolist()
+            quat_flange_on_base = [flange_ori_on_base[3], flange_ori_on_base[0], flange_ori_on_base[1],
+                                   flange_ori_on_base[2]]
             # 逆解到关节空间
-            waypoint_joint = self.robot.inverse_kin(waypoints_joint[cnt],
-                                                    flanker_pos_on_base,
-                                                    quat_flanker_on_base)
+            last_joints = np.array(waypoints_joint[cnt]) / 180.0 * np.pi
+            waypoint_joint = self.robot.inverse_kin(last_joints,
+                                                    flange_pos_on_base,
+                                                    quat_flange_on_base)
             if waypoint_joint is None:
                 self.log_error("逆解失败")
                 return None
-
-            waypoints_joint.append(waypoint_joint['joint'])
+            joint = np.array(waypoint_joint['joint']) / np.pi * 180.0
+            waypoints_joint.append(joint)
         return waypoints_joint[1:]
 
     def move_offset(self, offset, move_style: RobotMoveStyle = RobotMoveStyle.move_joint_line):
@@ -293,13 +297,14 @@ class AuboControl:
         向目标法线方向移动偏移距离
         """
         final_target_in_flanger = self.pos_to_rmatrix([0, 0, offset], list(self.tool_end['ori']))
-        curr_point_joint = self.get_current_waypoint()[0]
+        curr_point_joint = self.get_current_waypoint()[0] / 180.0 * np.pi
         rt_final = self.end_to_base(final_target_in_flanger)
         final_pos = rt_final[:3, 3]
         ori = Rotation.from_matrix(rt_final[:3, :3]).as_quat()
         final_ori = [ori[3], ori[0], ori[1], ori[2]]
         final_target_joint = self.robot.inverse_kin(curr_point_joint, final_pos, final_ori)
-        self.move_to_waypoints_in_joint([final_target_joint['joint']], move_style=move_style)
+        final_joint = np.array(final_target_joint['joint']) / np.pi * 180.0
+        self.move_to_waypoints_in_joint([final_joint], move_style=move_style)
 
     def move_to_waypoints_in_joint(self,
                                    waypoints_joint: list,
@@ -317,12 +322,12 @@ class AuboControl:
                 if check_joints_degree_range is not None:
                     curr_joint = self.get_current_waypoint()[0]
                     for i in range(6):
-                        if abs(curr_joint[i] - waypoint[i]) / np.pi * 180 > check_joints_degree_range[i]:
-                            self.log_error(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i]) / np.pi * 180}度，\
+                        if abs(curr_joint[i] - waypoint[i]) > check_joints_degree_range[i]:
+                            self.log_error(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
                                            所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
-                            raise Exception(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i]) / np.pi * 180}度，\
+                            raise Exception(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
                                             所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
-
+                waypoint = np.array(waypoint) / 180.0 * np.pi
                 ret = self.robot.move_joint(waypoint)
                 if ret is not RobotErrorType.RobotError_SUCC:
                     self.log_error("关节移动失败")
@@ -330,6 +335,7 @@ class AuboControl:
 
         elif move_style is RobotMoveStyle.move_joint_line:
             for waypoint in waypoints_joint:
+                waypoint = np.array(waypoint) / 180.0 * np.pi
                 ret = self.robot.move_line(waypoint)
                 if ret is not RobotErrorType.RobotError_SUCC:
                     self.log_error("关节移动失败")
