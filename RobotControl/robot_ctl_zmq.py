@@ -9,10 +9,10 @@ from RobotControl import DobotControl, AuboControl, DobotApiState, UniversalGras
 
 
 class RobotSeverZMQ:
-    def __init__(self, port: int = 8008, log: CasLogger = None, recv_timeout: int = 10000):
+    def __init__(self, port: int = 8100, log: CasLogger = None, recv_timeout: int = 10000):
         context = zmq.Context()
-        context.setsockopt(zmq.RCVTIMEO, recv_timeout)
-        context.setsockopt(zmq.SNDTIMEO, 1000)
+        # context.setsockopt(zmq.RCVTIMEO, recv_timeout)
+        # context.setsockopt(zmq.SNDTIMEO, 1000)
         context.setsockopt(zmq.LINGER, 0)
 
         self.socket = context.socket(zmq.REP)
@@ -32,7 +32,7 @@ class RobotSeverZMQ:
 
     def send_recv_response(self, response: dict):
         try:
-            self.socket.send(json.dumps(response))
+            self.socket.send_string(json.dumps(response))
         except Exception as e:
             self.log.error_show(f"send_msg_failed, because of {e}")
 
@@ -41,7 +41,7 @@ class RobotSeverZMQ:
 
 
 def robot_cmd(robot_control, log):
-    zmq_sever = RobotSeverZMQ(port=8010)
+    zmq_sever = RobotSeverZMQ(port=8101)
     while True:
         zmq_sever.recv_msg_dict()
         if zmq_sever.is_exist_in_dict("stop_move"):
@@ -64,16 +64,17 @@ def robot_cmd(robot_control, log):
                                               "end_pos": [],
                                               "end_ori": []})
 
-        if zmq_sever.is_exist_in_dict("get_move_to_waypoints"):
-            param = zmq_sever.robot_msg_dict["get_move_to_waypoints"]
+        if zmq_sever.is_exist_in_dict("get_inverse_solution"):
+            param = zmq_sever.robot_msg_dict["get_inverse_solution"]
             try:
-                joints_list = robot_control.get_move_to_waypoints(waypoints=param["pose_list"],
+                pose_rt = robot_control.pos_to_rmatrix(param["pos"], param["ori"])
+                joints_list = robot_control.get_move_to_waypoints(waypoints=[pose_rt],
                                                                   coor=param["coor"],
                                                                   offset=param["offset"])
-                zmq_sever.send_recv_response({"joints_list": joints_list})
+                zmq_sever.send_recv_response({"joints": list(joints_list[0])})
             except Exception as e:
                 log.error_show(f"获取目标位置逆解结果失败{str(e)}")
-                zmq_sever.send_recv_response({"joints_list": []})
+                zmq_sever.send_recv_response({"joints": []})
 
         if zmq_sever.is_exist_in_dict("disconnect_robot"):
             try:
@@ -87,16 +88,16 @@ def robot_cmd(robot_control, log):
             param = zmq_sever.robot_msg_dict["pos_to_rmatrix"]
             try:
                 rt_mat = robot_control.pos_to_rmatrix(pos=param["pos"], ori=param["ori"])
-                zmq_sever.send_recv_response({"pos_to_rmatrix": rt_mat})
+                zmq_sever.send_recv_response({"pos_to_rmatrix": list(rt_mat)})
             except Exception as e:
                 log.error_show(f"pos_to_rmatrix失败{str(e)}")
                 zmq_sever.send_recv_response({"pos_to_rmatrix": []})
 
-        if zmq_sever.is_exist_in_dict("get_tool_end_pos"):
+        if zmq_sever.is_exist_in_dict("get_tool_end_pose"):
             try:
                 pos, ori = robot_control.get_tool_end_pos()
-                zmq_sever.send_recv_response({"pos": pos,
-                                              "ori": ori})
+                zmq_sever.send_recv_response({"pos": pos.squeeze().tolist(),
+                                              "ori": ori.squeeze().tolist()})
             except Exception as e:
                 log.error_show(f"获取末端在基坐标系下坐标失败{str(e)}")
                 zmq_sever.send_recv_response({"pos": [],
@@ -125,12 +126,12 @@ def robot_state_feedback(running_value: multiprocessing.Value,
     context = zmq.Context()
     context.setsockopt(zmq.LINGER, 0)
     socket = context.socket(zmq.PUB)
-    socket.bind(f"tcp://*:8009")
+    socket.bind(f"tcp://*:8102")
 
     while True:
         running_state_value = running_value.get()
         result_state_value = result_value.get()
-        socket.send(json.dumps({"running_value": running_state_value,
+        socket.send_string(json.dumps({"running_value": running_state_value,
                                 "result_value": result_state_value}))
 
 
@@ -142,7 +143,7 @@ def zmq_sever_process(sys_argv: list):
     hand_ctl = None
 
     log = CasLogger('logfiles/robot_move_log.log')
-    zmq_sever = RobotSeverZMQ(log=log)
+    zmq_sever = RobotSeverZMQ(port=8100, log=log)
 
     robot_state_process = multiprocessing.Process(target=robot_state_feedback,
                                                   args=(running_value, result_value),

@@ -55,7 +55,8 @@ class CasLogger(object):
         line = frame_info[1]
         self.logger.info(f"{file_name} - {line} : {info}")
         cur_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
-        self.info_queue.put("<font color=\"#000000\">" + str(cur_time) + ": " + info + "</font>")
+        if self.info_queue is not None:
+            self.info_queue.put("<font color=\"#000000\">" + str(cur_time) + ": " + info + "</font>")
 
     def error_show(self, error: str):
         previous_frame = currentframe().f_back
@@ -64,7 +65,8 @@ class CasLogger(object):
         line = frame_info[1]
         self.logger.error(f"{file_name} - {line} : {error}")
         cur_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
-        self.error_queue.put("<font color=\"#FF0000\">" + "【ERROR】" + str(cur_time) + ": " + error + "</font>")
+        if self.error_queue is not None:
+            self.error_queue.put("<font color=\"#FF0000\">" + "【ERROR】" + str(cur_time) + ": " + error + "</font>")
 
     def finish_show(self, info: str):
         previous_frame = currentframe().f_back
@@ -73,7 +75,8 @@ class CasLogger(object):
         line = frame_info[1]
         self.logger.critical(f"{file_name} - {line} : {info}")
         cur_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
-        self.info_queue.put("<font color=\"#006600\">" + "【FINISH】" + str(cur_time) + ": " + info + "</font>")
+        if self.info_queue is not None:
+            self.info_queue.put("<font color=\"#006600\">" + "【FINISH】" + str(cur_time) + ": " + info + "</font>")
 
     def warn_show(self, warn: str):
         previous_frame = currentframe().f_back
@@ -82,7 +85,8 @@ class CasLogger(object):
         line = frame_info[1]
         self.logger.critical(f"{file_name} - {line} : {warn}")
         cur_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
-        self.info_queue.put("<font color=\"#ff6600\">" + "【WARNING】" + str(cur_time) + ": " + warn + "</font>")
+        if self.info_queue is not None:
+            self.info_queue.put("<font color=\"#ff6600\">" + "【WARNING】" + str(cur_time) + ": " + warn + "</font>")
 
 
 if __name__ == '__main__':
