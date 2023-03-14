@@ -132,11 +132,14 @@ def robot_state_feedback(running_value: multiprocessing.Value,
         running_state_value = running_value.get()
         result_state_value = result_value.get()
         socket.send_string(json.dumps({"running_value": running_state_value,
-                                "result_value": result_state_value}))
+                                       "result_value": result_state_value}))
 
 
 def zmq_sever_process(sys_argv: list):
-    robot_brand = sys_argv[1]
+    if len(sys_argv) < 2:
+        robot_brand = "dobot"
+    else:
+        robot_brand = sys_argv[1]
     result_value = multiprocessing.Manager().Value('h', 0)
     running_value = multiprocessing.Manager().Value('h', 0)
     grasp_init = False
