@@ -83,6 +83,8 @@ def robot_cmd(robot_control, log):
             except Exception as e:
                 log.error_show(f"关闭机器人失败{str(e)}")
                 zmq_sever.send_recv_response({"disconnect_robot": False})
+            finally:
+                break
 
         if zmq_sever.is_exist_in_dict("pos_to_rmatrix"):
             param = zmq_sever.robot_msg_dict["pos_to_rmatrix"]
@@ -319,7 +321,15 @@ def zmq_sever_process(sys_argv: list):
 
         if zmq_sever.is_exist_in_dict("switch_grasper"):
             pass
-
+        
+        if zmq_sever.is_exist_in_dict("terminate_robot"):
+            try:
+                zmq_sever.send_recv_response({"terminate_robot": True})
+            except Exception as e:
+                log.error_show(f"结束机器人失败{str(e)}")
+                zmq_sever.send_recv_response({"terminate_robot": False})
+            finally:
+                break
 
 if __name__ == "__main__":
     zmq_sever_process(sys_argv=sys.argv)
