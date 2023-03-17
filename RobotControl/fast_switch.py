@@ -150,8 +150,8 @@ if __name__ == "__main__":
     robot = RobotNode(info_queue=multiprocessing.Queue(), error_queue=multiprocessing.Queue(),
                       tool_end=dict(pos=(0, 0, 0), ori=(0, 0, 0)),
                       robot_brand="dobot")
-    fs = FastSwitcher(str(Path(__file__).parent / "config/fs_pose_json.json"),
-                      str(Path(__file__).parent / f"config/{robot.robot_brand}/init_pos_joint.txt"),
+    fs = FastSwitcher(str(Path(__file__).parent / "config/fs_pose.json"),
+                      str(Path(__file__).parent / f"config/init_pose_joint.txt"),
                       robot)
     time.sleep(5)
     if fs.release_switcher(1):

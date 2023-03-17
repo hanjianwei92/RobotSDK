@@ -237,7 +237,7 @@ def zmq_sever_process(sys_argv: list):
 
         if zmq_sever.is_exist_in_dict("set_tool_end"):
             param = zmq_sever.robot_msg_dict["set_tool_end"]
-            robot_control.tool_end = param["tool_end"]
+            robot_control.tool_end = dict(pos=param["pos"], ori=param["ori"])
             zmq_sever.send_recv_response({"set_tool_end": True})
             continue
 
