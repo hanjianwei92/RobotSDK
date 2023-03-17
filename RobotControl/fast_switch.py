@@ -2,13 +2,17 @@ import multiprocessing
 import time
 import json
 import numpy as np
-from RobotControl import RobotNode, UniversalGraspHandCtl
+from typing import Union
+from RobotControl import RobotNode, DobotControl, RobotMoveStyle, UniversalGraspHandCtl
 from pathlib import Path
 from scipy.spatial.transform import Rotation
 
 
 class FastSwitcher:
-    def __init__(self, fs_pose_json_path: str, robot_init_pos_joint: str, robot_ctl: RobotNode):
+    def __init__(self,
+                 fs_pose_json_path: str,
+                 robot_init_pos_joint: str,
+                 robot_ctl: Union[RobotNode, DobotControl]):
         self.robot = robot_ctl
         self.fs_pose_json_path = fs_pose_json_path
         self.air_ctl = UniversalGraspHandCtl()
@@ -26,6 +30,24 @@ class FastSwitcher:
         except Exception as e:
             print(f"加载位姿错误 {e}")
             self.having_switcher = False
+
+    def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None):
+        if isinstance(self.robot, RobotNode):
+            return self.robot.move_joint(joint_list, move_style, check_joints_range)
+        else:
+            self.robot.move_to_waypoints_in_joint(joint_list, move_style, check_joints_range)
+            return True
+
+    def move_pose(self, pose_list, coor=0, move_style=0, offset=0.0, is_init=True, check_joints_range=None):
+        if isinstance(self.robot, RobotNode):
+            return self.robot.move_pose(pose_list, coor, move_style, offset, is_init, check_joints_range)
+        else:
+            self.robot.move_to_waypoints(waypoints=pose_list,
+                                         coor=coor,
+                                         move_style=move_style,
+                                         offset=offset,
+                                         check_joints_degree_range=check_joints_range)
+            return True
 
     def get_save_fs_pose_json(self):
         fs_pose_dict = dict()
@@ -64,19 +86,19 @@ class FastSwitcher:
 
     def release_switcher(self, num):
         try:
-            self.robot.move_joint([self.fs_ready_pose_joint])
+            self.move_joint([self.fs_ready_pose_joint])
             pose_rt_middle = self.pos_to_rmatrix(self.fs_pose[f"fs_middle_{num}"]["pos"],
                                                  self.fs_pose[f"fs_middle_{num}"]["ori"])
 
             pose_rt_store = self.pos_to_rmatrix(self.fs_pose[f"fs_store_{num}"]["pos"],
                                                 self.fs_pose[f"fs_store_{num}"]["ori"])
 
-            ret = self.robot.move_pose([pose_rt_middle], offset=0.40, is_init=False)
+            ret = self.move_pose([pose_rt_middle], offset=0.40, is_init=False)
             if ret is False:
                 raise Exception("error")
             self.robot.move_offset(0.40)
 
-            ret = self.robot.move_pose([pose_rt_store], offset=0.01, is_init=False)
+            ret = self.move_pose([pose_rt_store], offset=0.01, is_init=False)
             if ret is False:
                 raise Exception("error")
             self.robot.move_offset(0.01)
@@ -89,7 +111,7 @@ class FastSwitcher:
 
         except Exception as e:
             print(f"release grasper failed , {e}")
-            self.robot.move_joint([self.fs_ready_pose_joint])
+            self.move_joint([self.fs_ready_pose_joint])
             return False
 
     def connect_switcher(self, num):
@@ -100,7 +122,7 @@ class FastSwitcher:
             pose_rt_store = self.pos_to_rmatrix(self.fs_pose[f"fs_store_{num}"]["pos"],
                                                 self.fs_pose[f"fs_store_{num}"]["ori"])
 
-            ret = self.robot.move_pose([pose_rt_store], offset=0.10, is_init=False)
+            ret = self.move_pose([pose_rt_store], offset=0.10, is_init=False)
             if ret is False:
                 raise Exception("error")
             self.air_ctl.grasp()
@@ -109,18 +131,18 @@ class FastSwitcher:
             time.sleep(1)
             self.robot.move_offset(-0.01)
 
-            ret = self.robot.move_pose([pose_rt_middle], offset=0.0, is_init=False)
+            ret = self.move_pose([pose_rt_middle], offset=0.0, is_init=False)
             if ret is False:
                 raise Exception("error")
             self.robot.move_offset(-0.40)
 
-            self.robot.move_joint([self.fs_ready_pose_joint])
+            self.move_joint([self.fs_ready_pose_joint])
 
             return True
 
         except Exception as e:
             print(f"connect grasper failed , {e}")
-            self.robot.move_joint([self.fs_ready_pose_joint])
+            self.move_joint([self.fs_ready_pose_joint])
             return False
 
 

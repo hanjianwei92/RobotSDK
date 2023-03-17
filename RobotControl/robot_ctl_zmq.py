@@ -3,9 +3,10 @@ import zmq
 import threading
 import sys
 import multiprocessing
+from pathlib import Path
 from typing import Optional
 from RobotControl import DobotControl, AuboControl, DobotApiState, UniversalGraspHandCtl, DhModbus, RMHandModbus, \
-    CasLogger
+    CasLogger, FastSwitcher
 
 
 class RobotSeverZMQ:
@@ -194,11 +195,15 @@ def zmq_sever_process(sys_argv: list):
                                         daemon=True)
     robot_cmd_thread.start()
 
+    fs = FastSwitcher(str(Path(__file__).parent / "config/fs_pose.json"),
+                      str(Path(__file__).parent / f"config/init_pose_joint.txt"),
+                      robot_control)
     while True:
         zmq_sever.recv_msg_dict()
 
         if zmq_sever.is_exist_in_dict("grasper_select"):
-            grasper_select = zmq_sever.robot_msg_dict["grasper_select"]
+            param = zmq_sever.robot_msg_dict["grasper_select"]
+            grasper_select = param["num"]
             try:
                 if grasper_select == 1:
                     hand_ctl = DhModbus(connect_type=0, rtu_port_name='COM3', baud_rate=115200, log=log)
@@ -320,8 +325,22 @@ def zmq_sever_process(sys_argv: list):
                 zmq_sever.send_recv_response({"sucker_execute": False})
 
         if zmq_sever.is_exist_in_dict("switch_grasper"):
-            pass
-        
+            param = zmq_sever.robot_msg_dict["switch_grasper"]
+            try:
+                if param["release_num"] != 0:
+                    if fs.release_switcher(param["release_num"]) and fs.connect_switcher(param["connect_num"]):
+                        zmq_sever.send_recv_response({"switch_grasper": True})
+                    else:
+                        zmq_sever.send_recv_response({"switch_grasper": False})
+                else:
+                    if fs.connect_switcher(param["connect_num"]):
+                        zmq_sever.send_recv_response({"switch_grasper": True})
+                    else:
+                        zmq_sever.send_recv_response({"switch_grasper": False})
+            except Exception as e:
+                log.error_show(f"切换夹爪失败，{e}")
+                zmq_sever.send_recv_response({"switch_grasper": False})
+
         if zmq_sever.is_exist_in_dict("terminate_robot"):
             try:
                 zmq_sever.send_recv_response({"terminate_robot": True})
@@ -330,6 +349,7 @@ def zmq_sever_process(sys_argv: list):
                 zmq_sever.send_recv_response({"terminate_robot": False})
             finally:
                 break
+
 
 if __name__ == "__main__":
     zmq_sever_process(sys_argv=sys.argv)
