@@ -57,6 +57,12 @@ class FastSwitcher:
             print("input error")
             return
         for num in range(1, int(key) + 1):
+            print(f"please input fast_switcher_{num} pose (x,y,z,rx,ry,rz; unit: meter and degree) relative to robot flange.")
+            pose_string = input()
+            pose = pose_string.split(",")
+            fs_pose_dict[f"tool_end_{num}_pose"] = {"pos": [float(pose[0]), float(pose[1]), float(pose[2])], 
+                                                    "ori": [float(pose[3]), float(pose[4]), float(pose[5])]}
+
             print(f"press enter to get fs_store_{num} pose")
             input()
             _, pos, ori = self.robot.get_current_waypoint()
@@ -65,7 +71,6 @@ class FastSwitcher:
             input()
             _, pos, ori = self.robot.get_current_waypoint()
             fs_pose_dict[f"fs_middle_{num}"] = {"pos": pos, "ori": ori}
-
         # dict保存为json文件
         with open(self.fs_pose_json_path, "w") as f:
             json.dump(fs_pose_dict, f, indent=2)
@@ -86,6 +91,7 @@ class FastSwitcher:
 
     def release_switcher(self, num):
         try:
+            self.robot.tool_end = dict(pos=[0.0,0.0,0.0],ori=[0.0,0.0,0.0])
             self.move_joint([self.fs_ready_pose_joint])
             pose_rt_middle = self.pos_to_rmatrix(self.fs_pose[f"fs_middle_{num}"]["pos"],
                                                  self.fs_pose[f"fs_middle_{num}"]["ori"])
@@ -116,6 +122,7 @@ class FastSwitcher:
 
     def connect_switcher(self, num):
         try:
+            self.robot.tool_end = dict(pos=[0.0,0.0,0.0],ori=[0.0,0.0,0.0])
             pose_rt_middle = self.pos_to_rmatrix(self.fs_pose[f"fs_middle_{num}"]["pos"],
                                                  self.fs_pose[f"fs_middle_{num}"]["ori"])
 
@@ -137,6 +144,8 @@ class FastSwitcher:
             self.robot.move_offset(-0.40)
 
             self.move_joint([self.fs_ready_pose_joint])
+            
+            self.robot.tool_end = self.fs_pose[f"tool_end_{num}_pose"]
 
             return True
 
