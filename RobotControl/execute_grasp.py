@@ -295,7 +295,7 @@ class RobotNode(QObject):
         self.running_value = multiprocessing.Manager().Value('h', 0)  # 机械臂当前状态，0初始化，-1待机，-2初始化失败，1运行
         self.info_queue = info_queue
         self.error_queue = error_queue
-        self.tool_end = tool_end
+        self.tool_end_pose = tool_end
         self.robot_brand = robot_brand
         self.robot_init_joint = robot_init_joint
         self.log = CasLogger('logfiles/robot_ctl_log.log',
@@ -321,7 +321,7 @@ class RobotNode(QObject):
                                                                                 self.running_value,
                                                                                 self.info_queue,
                                                                                 self.error_queue,
-                                                                                self.tool_end,
+                                                                                self.tool_end_pose,
                                                                                 self.robot_brand,
                                                                                 self.robot_init_joint,
                                                                                 robot_state.data_array))
@@ -334,7 +334,7 @@ class RobotNode(QObject):
                                                                                 self.running_value,
                                                                                 self.info_queue,
                                                                                 self.error_queue,
-                                                                                self.tool_end,
+                                                                                self.tool_end_pose,
                                                                                 self.robot_brand,
                                                                                 self.robot_init_joint))
 

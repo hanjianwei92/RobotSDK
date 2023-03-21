@@ -305,17 +305,7 @@ def zmq_sever_process(sys_argv: list):
                     hand_ctl.grasp(pos=param["pos"], force=param["force"])
                 else:
                     hand_ctl.release(pos=param["pos"])
-                
-                while True:
-                    curr_grasp_statue = hand_ctl.get_curr_grasp_statue()[0]
-                    if curr_grasp_statue == 2 :
-                        zmq_sever.send_recv_response({"grasper_execute": True})
-                        break 
-                    
-                    if curr_grasp_statue == 1:
-                        zmq_sever.send_recv_response({"grasper_execute": False})
-                        break    
-
+                zmq_sever.send_recv_response({"grasper_execute": True})
             except Exception as e:
                 log.error_show(f"抓取失败，{e}")
                 zmq_sever.send_recv_response({"grasper_execute": False})

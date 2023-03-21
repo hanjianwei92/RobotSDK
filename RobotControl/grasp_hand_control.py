@@ -208,11 +208,19 @@ class DhModbus:
         self.set_force(force)
         time.sleep(0.5)
         self.set_position(pos)
+        while True:
+            curr_grasp_statue = self.get_curr_grasp_statue()[0]
+            if curr_grasp_statue == 2 or curr_grasp_statue == 1:
+                break
 
     def release(self, pos=0.145):
         if pos is None:
             pos = 0.145
         self.set_position(pos)
+        while True:
+            curr_grasp_statue = self.get_curr_grasp_statue()[0]
+            if curr_grasp_statue == 2 or curr_grasp_statue == 1:
+                break
 
 
 class RMHandModbus:
