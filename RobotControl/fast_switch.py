@@ -104,7 +104,7 @@ class FastSwitcher:
                 raise Exception("error")
             self.robot.move_offset(0.40)
 
-            ret = self.move_pose([pose_rt_store], offset=0.01, is_init=False)
+            ret = self.move_pose([pose_rt_store], offset=0.01, is_init=False, move_style=RobotMoveStyle.move_joint_line)
             if ret is False:
                 raise Exception("error")
             self.robot.move_offset(0.01)
@@ -138,7 +138,7 @@ class FastSwitcher:
             time.sleep(1)
             self.robot.move_offset(-0.01)
 
-            ret = self.move_pose([pose_rt_middle], offset=0.0, is_init=False)
+            ret = self.move_pose([pose_rt_middle], offset=0.0, is_init=False, move_style=RobotMoveStyle.move_joint_line)
             if ret is False:
                 raise Exception("error")
             self.robot.move_offset(-0.40)
