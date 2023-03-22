@@ -433,7 +433,7 @@ class RobotNode(QObject):
             time.sleep(0.1)
             if self.result_value.value == 1:
                 self.result_value.value = 0
-                self.log.finish_show("机械臂移动至目标点成功")
+                # self.log.finish_show("机械臂移动至目标点成功")
                 return True
             elif self.result_value.value == -1:
                 self.result_value.value = 0
