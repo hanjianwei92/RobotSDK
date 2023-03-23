@@ -102,13 +102,13 @@ class DhModbus:
 
         if connect_type == Modbus.RTU:
             self.master = modbus_rtu.RtuMaster(serial.Serial(port=rtu_port_name, baudrate=baud_rate))
-            self.master.set_timeout(5.0)
+            self.master.set_timeout(1.0)
             # self.master.set_verbose(True)
             self.master.open()
 
         elif connect_type == Modbus.TCP_to_RTU:
             self.master = modbus_tcp.TcpMaster(host=ip, port=port)
-            self.master.set_timeout(5.0)
+            self.master.set_timeout(1.0)
             # self.master.set_verbose(True)
             self.master.open()
 
@@ -208,7 +208,7 @@ class DhModbus:
         if force is None:
             force = 40
         self.set_force(force)
-        time.sleep(0.5)
+        time.sleep(0.1)
         self.set_position(pos)
         time.sleep(0.1)
         while True:
@@ -216,13 +216,12 @@ class DhModbus:
             if curr_grasp_statue is None or curr_grasp_statue[0] == 2 or curr_grasp_statue[0] == 1:
                 break
 
-    def release(self, pos=0.145, force=100):
+    def release(self, pos=0.145):
         if pos is None:
             pos = 0.145
-        if force is None:
-            force = 100
-        self.set_force(force)
-        time.sleep(0.5)
+        if pos != 0.145:
+            self.set_force(100)
+            time.sleep(0.1)
         self.set_position(pos)
         time.sleep(0.1)
         while True:
