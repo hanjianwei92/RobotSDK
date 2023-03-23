@@ -203,6 +203,8 @@ class DhModbus:
         return self.receive_cmd(0x0201)
 
     def grasp(self, pos=0.0, force=40):
+        if pos is None:
+            pos = 0.0
         if force is None:
             force = 40
         self.set_force(force)
@@ -214,9 +216,13 @@ class DhModbus:
             if curr_grasp_statue is None or curr_grasp_statue[0] == 2 or curr_grasp_statue[0] == 1:
                 break
 
-    def release(self, pos=0.145):
+    def release(self, pos=0.145, force=100):
         if pos is None:
             pos = 0.145
+        if force is None:
+            force = 100
+        self.set_force(force)
+        time.sleep(0.5)
         self.set_position(pos)
         time.sleep(0.1)
         while True:
