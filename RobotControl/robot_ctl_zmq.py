@@ -52,6 +52,7 @@ def robot_cmd(robot_control, log):
             except Exception as e:
                 log.error_show(f"机械臂停止失败{str(e)}")
                 zmq_sever.send_recv_response({"stop_move": False})
+            continue
 
         if zmq_sever.is_exist_in_dict("get_current_waypoint"):
             try:
@@ -64,6 +65,7 @@ def robot_cmd(robot_control, log):
                 zmq_sever.send_recv_response({"joint": [],
                                               "end_pos": [],
                                               "end_ori": []})
+            continue
 
         if zmq_sever.is_exist_in_dict("get_inverse_solution"):
             param = zmq_sever.robot_msg_dict["get_inverse_solution"]
@@ -76,6 +78,7 @@ def robot_cmd(robot_control, log):
             except Exception as e:
                 log.error_show(f"获取目标位置逆解结果失败{str(e)}")
                 zmq_sever.send_recv_response({"joints": []})
+            continue
 
         if zmq_sever.is_exist_in_dict("disconnect_robot"):
             try:
@@ -95,6 +98,7 @@ def robot_cmd(robot_control, log):
             except Exception as e:
                 log.error_show(f"pos_to_rmatrix失败{str(e)}")
                 zmq_sever.send_recv_response({"pos_to_rmatrix": []})
+            continue
 
         if zmq_sever.is_exist_in_dict("get_tool_end_pose"):
             try:
@@ -105,6 +109,7 @@ def robot_cmd(robot_control, log):
                 log.error_show(f"获取末端在基坐标系下坐标失败{str(e)}")
                 zmq_sever.send_recv_response({"pos": [],
                                               "ori": []})
+            continue
 
         if zmq_sever.is_exist_in_dict("ClearError") and robot_control.robot_brand == "dobot":
             try:
@@ -113,6 +118,7 @@ def robot_cmd(robot_control, log):
             except Exception as e:
                 log.error_show(f"清除dobot错误失败{str(e)}")
                 zmq_sever.send_recv_response({"ClearError": False})
+            continue
 
         if zmq_sever.is_exist_in_dict("StartDrag") and robot_control.robot_brand == "dobot":
             param = zmq_sever.robot_msg_dict["StartDrag"]
@@ -122,6 +128,7 @@ def robot_cmd(robot_control, log):
             except Exception as e:
                 log.error_show(f"开启/关闭dobot机器人拖拽失败{str(e)}")
                 zmq_sever.send_recv_response({"StartDrag": False})
+            continue
 
 
 def robot_state_feedback(running_value: multiprocessing.Value,
@@ -309,6 +316,7 @@ def zmq_sever_process(sys_argv: list):
             except Exception as e:
                 log.error_show(f"抓取失败，{e}")
                 zmq_sever.send_recv_response({"grasper_execute": False})
+            continue
 
         if zmq_sever.is_exist_in_dict("sucker_execute") and grasp_init is True:
             param = zmq_sever.robot_msg_dict["sucker_execute"]
@@ -322,6 +330,7 @@ def zmq_sever_process(sys_argv: list):
             except Exception as e:
                 log.error_show(f"抓取失败，{e}")
                 zmq_sever.send_recv_response({"sucker_execute": False})
+            continue
 
         if zmq_sever.is_exist_in_dict("switch_grasper"):
             param = zmq_sever.robot_msg_dict["switch_grasper"]
@@ -339,6 +348,7 @@ def zmq_sever_process(sys_argv: list):
             except Exception as e:
                 log.error_show(f"切换夹爪失败，{e}")
                 zmq_sever.send_recv_response({"switch_grasper": False})
+            continue
 
         if zmq_sever.is_exist_in_dict("terminate_robot"):
             try:
