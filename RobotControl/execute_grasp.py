@@ -1,5 +1,5 @@
 import time
-from RobotControl import CasLogger, AuboControl, DobotControl, DobotApiState, RobotMoveStyle, RobotCoorStyle, \
+from RobotControl import CasLogger, DobotControl, DobotApiState, RobotMoveStyle, RobotCoorStyle, \
                RMHandModbus, DhModbus, UniversalGraspHandCtl
 from pathlib import Path
 import multiprocessing
@@ -24,6 +24,11 @@ def execute_grasp(command_move_queue,
                     error_queue=error_queue)
     try:
         if robot_brand == "aubo":
+            import platform
+            if platform.python_version().rsplit(".", 1)[0] != "3.7":
+                log.error_show(f"aubo机器人只支持python 3.7版本, 当期python版本为{platform.python_version()}")
+                raise Exception(f"aubo机器人只支持python 3.7版本, 当期python版本为{platform.python_version()}")
+            from RobotControl.aubo_ctl import AuboControl
             robot_control = AuboControl(default_robot=True, tool_end=tool_end,
                                         max_line_vel=0.2, max_line_acc=0.1,
                                         max_angular_vel=40, max_angular_acc=20,
@@ -312,7 +317,7 @@ class RobotNode(QObject):
                 continue
 
     def execute_grasp_async(self):
-        if self.robot_brand is 'dobot':
+        if self.robot_brand == "dobot":
             robot_state = DobotApiState()
             grasp_process = multiprocessing.Process(target=execute_grasp, args=(self.command_move_queue,
                                                                                 self.command_ctl_queue,
