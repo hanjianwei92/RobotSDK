@@ -166,9 +166,9 @@ def zmq_sever_process(sys_argv: list):
     try:
         if robot_brand == "aubo":
             import platform
-            if platform.python_version().rsplit(".", 1)[0] != "3.7":
-                log.error_show(f"aubo机器人只支持python 3.7版本, 当期python版本为{platform.python_version()}")
-                raise Exception(f"aubo机器人只支持python 3.7版本, 当期python版本为{platform.python_version()}")
+            if platform.system() == "Windows" and platform.python_version().rsplit(".", 1)[0] != "3.7":
+                log.error_show(f"aubo机器人在Windows下只支持python 3.7.x版本, 当前python版本为{platform.python_version()}")
+                raise Exception(f"aubo机器人在Windows下只支持python 3.7.x版本, 当前python版本为{platform.python_version()}")
             from RobotControl.aubo_ctl import AuboControl
             robot_control = AuboControl(default_robot=True,
                                         max_line_vel=0.2, max_line_acc=0.1,
