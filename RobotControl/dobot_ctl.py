@@ -239,9 +239,9 @@ class DobotControl:
         curr_point_joint = self.get_current_waypoint()[0]
         final_target_joint = self.robot_ctl.InverseSolution(pos + ori + [0, 0, 1] + curr_point_joint)[1]
         if final_target_joint is None:
-            self.log.error_show("逆解失败")
+            self.log.error_show("move_offset, 逆解失败")
             self.robot_ctl.ClearError()
-            return
+            raise Exception("move offset, 逆解失败")
         self.move_to_waypoints_in_joint([final_target_joint], move_style=move_style)
 
     def move_to_waypoints_in_joint(self,
@@ -306,10 +306,10 @@ class DobotControl:
         :return:
         """
         waypoints_in_joint = self.get_move_to_waypoints(waypoints=waypoints, coor=coor, offset=offset)
-        ret = self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
-        if ret is None:
-            self.log.error_show("移动失败")
-            return
+        if waypoints_in_joint is None:
+            self.log.error_show("move_to_waypoints, 逆解失败")
+            raise Exception("move_to_waypoints, 逆解失败")
+        self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
         if is_move_offset is True:
             self.move_offset(offset)
 

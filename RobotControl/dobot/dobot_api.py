@@ -201,10 +201,11 @@ class DobotApi:
             if wait_error_info is True:
                 error_info = self.GetErrorID()
                 if error_info != "":
-                    raise Exception(error_info)
+                    self.log(f"Error info: {error_info}")
             return error_id, result
         except Exception as e:
             self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed{e}, Please reconnect robot')
+            return -1, None
 
     def close(self):
         """

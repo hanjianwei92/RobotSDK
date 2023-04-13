@@ -303,6 +303,9 @@ class AuboControl:
         ori = Rotation.from_matrix(rt_final[:3, :3]).as_quat()
         final_ori = [ori[3], ori[0], ori[1], ori[2]]
         final_target_joint = self.robot.inverse_kin(curr_point_joint, final_pos, final_ori)
+        if final_target_joint is None:
+            self.log_error("move_offset, 逆解失败")
+            raise Exception("move offset, 逆解失败")
         final_joint = np.array(final_target_joint['joint']) / np.pi * 180.0
         self.move_to_waypoints_in_joint([final_joint], move_style=move_style)
 
@@ -331,7 +334,7 @@ class AuboControl:
                 ret = self.robot.move_joint(waypoint)
                 if ret is not RobotErrorType.RobotError_SUCC:
                     self.log_error("关节移动失败")
-                    return None
+                    raise Exception("关节移动失败")
 
         elif move_style is RobotMoveStyle.move_joint_line:
             for waypoint in waypoints_joint:
@@ -339,7 +342,7 @@ class AuboControl:
                 ret = self.robot.move_line(waypoint)
                 if ret is not RobotErrorType.RobotError_SUCC:
                     self.log_error("关节移动失败")
-                    return None
+                    raise Exception("关节移动失败")
         return 1
 
     def move_to_waypoints(self,
@@ -360,10 +363,10 @@ class AuboControl:
         :return:
         """
         waypoints_in_joint = self.get_move_to_waypoints(waypoints=waypoints, coor=coor, offset=offset)
-        ret = self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
-        if ret is None:
-            self.log_error("移动失败")
-            return
+        if waypoints_in_joint is None:
+            self.log_error("move_to_waypoints, 逆解失败")
+            raise Exception("move_to_waypoints, 逆解失败")
+        self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
         if is_move_offset is True:
             self.move_offset(offset)
 
