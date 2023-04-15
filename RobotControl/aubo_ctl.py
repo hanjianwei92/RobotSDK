@@ -7,9 +7,9 @@ import datetime
 import platform
 
 if platform.system() == "Windows":
-    from .aubo_windows import *
+    from .aubo.aubo_windows import *
 else:
-    from .aubo_linux import *
+    from .aubo.aubo_linux import *
 
 
 class AuboControl:

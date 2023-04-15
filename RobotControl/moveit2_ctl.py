@@ -9,12 +9,10 @@ from rclpy.node import Node
 from scipy.spatial.transform import Rotation
 from threading import Thread
 from geometry_msgs.msg import Point, Quaternion
-from pymoveit2 import MoveIt2, GripperCommand
-from pymoveit2.robots import casia_robot
+from .pymoveit2 import MoveIt2, GripperCommand
+from .pymoveit2.robots import casia_robot
 from .coor_and_move_style import *
 from .dobot.cas_logger import CasLogger
-
-
 
 
 class Moveit2Control:
@@ -30,31 +28,30 @@ class Moveit2Control:
 
         if logger is None:
             logger = CasLogger("dobot.log",
-                              info_queue=multiprocessing.Manager().Queue(1),
-                              error_queue=multiprocessing.Manager().Queue(1))
-
+                               info_queue=multiprocessing.Manager().Queue(1),
+                               error_queue=multiprocessing.Manager().Queue(1))
 
         # self.moveit_process = subprocess.Popen(['ros2', 'launch', 'casia_robot', 'demo.launch.py'])
 
         self.log: CasLogger = logger
-        self.moveit_ctl :MoveIt2  = None
-        self.tool_end:dict = tool_end
+        self.moveit_ctl: MoveIt2 = None
+        self.tool_end: dict = tool_end
         self.init_moveit()
 
     def init_moveit(self):
         rclpy.init(args=sys.argv)
         node = Node("moveit_group")
         self.moveit_ctl = MoveIt2(
-                        node=node,
-                        joint_names=casia_robot.joint_names(),
-                        base_link_name=casia_robot.base_link_name(),
-                        end_effector_name=casia_robot.end_effector_name(),
-                        group_name=casia_robot.MOVE_GROUP_ARM,
-                        execute_via_moveit=False,
-                        ignore_new_calls_while_executing = True,
-                        callback_group=ReentrantCallbackGroup(),
-                        follow_joint_trajectory_action_name='/arm_group_controller/follow_joint_trajectory'
-                    )
+            node=node,
+            joint_names=casia_robot.joint_names(),
+            base_link_name=casia_robot.base_link_name(),
+            end_effector_name=casia_robot.end_effector_name(),
+            group_name=casia_robot.MOVE_GROUP_ARM,
+            execute_via_moveit=False,
+            ignore_new_calls_while_executing=True,
+            callback_group=ReentrantCallbackGroup(),
+            follow_joint_trajectory_action_name='/arm_group_controller/follow_joint_trajectory'
+        )
 
         executor = rclpy.executors.MultiThreadedExecutor()
         executor.add_node(node)
@@ -74,9 +71,9 @@ class Moveit2Control:
                       姿态 'ori': 姿态[Rx, Ry, Rz] °
         """
         joints = self.moveit_ctl.get_current_joints()
-        joints = np.array(joints) / np.pi *180.0
+        joints = np.array(joints) / np.pi * 180.0
         pos, ori = self.moveit_ctl.get_current_pose("Link6")
-        rpy = Rotation.from_quat(ori).as_euler('xyz',degrees=True)
+        rpy = Rotation.from_quat(ori).as_euler('xyz', degrees=True)
         return joints.tolist(), pos, rpy
 
     def get_tool_end_pos(self):
@@ -166,16 +163,16 @@ class Moveit2Control:
             flange_pos_on_base = np.dot(tool_waypoint_base, flange_pos_on_end)[:3].squeeze().tolist()
             flange_ori_on_base = Rotation.from_matrix(tool_waypoint_base[:3, :3]). \
                 as_quat().squeeze().tolist()
-            last_waypoint_joint = np.array(waypoints_joint[cnt])/ 180.0 * np.pi
+            last_waypoint_joint = np.array(waypoints_joint[cnt]) / 180.0 * np.pi
             # 逆解到关节空间
-            waypoint_joint = self.moveit_ctl.get_ik_result(flange_pos_on_base, flange_ori_on_base, "Link6", last_waypoint_joint.tolist())
-            waypoint_joint =  np.array(waypoint_joint)/ np.pi * 180.0
-            # 逆解到关节空间
+            waypoint_joint = self.moveit_ctl.get_ik_result(flange_pos_on_base, flange_ori_on_base, "Link6",
+                                                           last_waypoint_joint.tolist())
 
             if waypoint_joint is None:
                 self.log.error_show("逆解失败")
                 return None
 
+            waypoint_joint = np.array(waypoint_joint) / np.pi * 180.0
             waypoints_joint.append(waypoint_joint.tolist())
         return waypoints_joint[1:]
 
@@ -187,12 +184,12 @@ class Moveit2Control:
         rt_final = self.end_to_base(final_target_in_flange)
         pos = rt_final[:3, 3].squeeze().tolist()
         ori = Rotation.from_matrix(rt_final[:3, :3]).as_quat().squeeze().tolist()
-        curr_point_joint = np.array(self.get_current_waypoint()[0]) /180.0 * np.pi
+        curr_point_joint = np.array(self.get_current_waypoint()[0]) / 180.0 * np.pi
         final_target_joint = self.moveit_ctl.get_ik_result(pos, ori, "Link6", curr_point_joint.tolist())
-        final_target_joint = np.array(final_target_joint) /np.pi *180.0
         if final_target_joint is None:
-            self.log.error_show("逆解失败")
-            return
+            self.log.error_show("move_offset, 逆解失败")
+            raise Exception("move offset, 逆解失败")
+        final_target_joint = np.array(final_target_joint) / np.pi * 180.0
         self.move_to_waypoints_in_joint([final_target_joint.tolist()], move_style=move_style)
 
     def move_to_waypoints_in_joint(self,
@@ -252,10 +249,10 @@ class Moveit2Control:
         :return:
         """
         waypoints_in_joint = self.get_move_to_waypoints(waypoints=waypoints, coor=coor, offset=offset)
-        ret = self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
-        if ret is None:
-            self.log.error_show("移动失败")
-            return
+        if waypoints_in_joint is None:
+            self.log.error_show("move_to_waypoints, 逆解失败")
+            raise Exception("move_to_waypoints, 逆解失败")
+        self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
         if is_move_offset is True:
             self.move_offset(offset)
 
@@ -265,7 +262,6 @@ class Moveit2Control:
         :return:0停止  1运行
         """
         return self.moveit_ctl.get_robot_state()
-
 
     def move_stop(self):
         """
@@ -285,20 +281,20 @@ class Moveit2Control:
 
 
 class GripperMoveit:
-    def __init__( self ,init_rclpy = False):
+    def __init__(self, init_rclpy=False):
         self.gripper_moveit = None
         self.init_gripper_moveit(init_rclpy)
 
-    def init_gripper_moveit(self, init_rclpy = False):
-        if init_rclpy :
-          rclpy.init(args=sys.argv)
+    def init_gripper_moveit(self, init_rclpy=False):
+        if init_rclpy:
+            rclpy.init(args=sys.argv)
         node = Node("gripper_moveit_group")
         self.gripper_moveit = GripperCommand(
-                node = node,
-                gripper_joint_names = ['dh_gripper_finger1_joint'],
-                open_gripper_joint_positions= [-37.0],
-                closed_gripper_joint_positions =  [0.0],
-                gripper_command_action_name =  '/hand_group_controller/gripper_cmd'
+            node=node,
+            gripper_joint_names=['dh_gripper_finger1_joint'],
+            open_gripper_joint_positions=[-37.0],
+            closed_gripper_joint_positions=[0.0],
+            gripper_command_action_name='/hand_group_controller/gripper_cmd'
         )
 
         executor = rclpy.executors.MultiThreadedExecutor()
@@ -316,8 +312,9 @@ class GripperMoveit:
         self.gripper_moveit.gripper_go(-(pos / 0.145 * 37.0 / 180.0 * np.pi), float(force))
 
     def release(self, pos=0.145):
-        pos=0.145 if pos is None else pos
+        pos = 0.145 if pos is None else pos
         self.gripper_moveit.gripper_go(-(pos / 0.145 * 37.0 / 180.0 * np.pi), 100.0)
+
 
 if __name__ == "__main__":
     moveit = Moveit2Control()
