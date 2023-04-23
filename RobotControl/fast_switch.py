@@ -57,7 +57,8 @@ class FastSwitcher:
             print("input error")
             return
         for num in range(1, int(key) + 1):
-            print(f"please input fast_switcher_{num} pose (x,y,z,rx,ry,rz; unit: meter and degree) relative to robot flange.")
+            print(f"please input fast_switcher_{num} pose (x,y,z,rx,ry,rz; unit: meter and degree, "
+                  f"relative to robot flange).")
             pose_string = input()
             pose = pose_string.split(",")
             fs_pose_dict[f"tool_end_{num}_pose"] = {"pos": [float(pose[0]), float(pose[1]), float(pose[2])], 
