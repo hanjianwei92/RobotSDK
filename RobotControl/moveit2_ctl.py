@@ -28,8 +28,8 @@ class Moveit2Control:
 
         if logger is None:
             logger = CasLogger("dobot.log",
-                               info_queue=multiprocessing.Manager().Queue(1),
-                               error_queue=multiprocessing.Manager().Queue(1))
+                               info_queue=multiprocessing.Queue(1),
+                               error_queue=multiprocessing.Queue(1))
 
         # self.moveit_process = subprocess.Popen(['ros2', 'launch', 'casia_robot', 'demo.launch.py'])
 

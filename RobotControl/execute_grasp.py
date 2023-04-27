@@ -292,9 +292,9 @@ class RobotNode(QObject):
                  robot_brand,
                  robot_init_joint=None):
         super().__init__()
-        self.command_move_queue = multiprocessing.Manager().Queue(1)
-        self.command_ctl_queue = multiprocessing.Manager().Queue(1)
-        self.command_ctl_result_queue = multiprocessing.Manager().Queue(1)
+        self.command_move_queue = multiprocessing.Queue(1)
+        self.command_ctl_queue = multiprocessing.Queue(1)
+        self.command_ctl_result_queue = multiprocessing.Queue(1)
         self.result_value = multiprocessing.Manager().Value('h', 0)  # 机械臂执行结果，0初始化，-1失败，1成功
         self.running_value = multiprocessing.Manager().Value('h', 0)  # 机械臂当前状态，0初始化，-1待机，-2初始化失败，1运行
         self.info_queue = info_queue
@@ -512,8 +512,8 @@ class RobotNode(QObject):
 
 
 if __name__ == "__main__":
-    info_queue = multiprocessing.Manager().Queue()
-    error_queue = multiprocessing.Manager().Queue()
+    info_queue = multiprocessing.Queue()
+    error_queue = multiprocessing.Queue()
     robot = RobotNode(info_queue, error_queue, tool_end=dict(pos=(0, 0.0, 0.52), ori=(0, 0, 0)),
                       robot_brand="moveit2")
     while True:
