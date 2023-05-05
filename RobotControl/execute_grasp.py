@@ -34,7 +34,7 @@ def execute_grasp(command_move_queue,
                                         max_angular_vel=40, max_angular_acc=20,
                                         max_joint_vel=90, max_joint_acc=50,
                                         info_queue=info_queue, error_queue=error_queue)
-            running_value.set(-1)
+            running_value.value = -1
             log.finish_show(f"机械臂{robot_brand}初始化成功")
 
         elif robot_brand == "dobot":
@@ -44,14 +44,14 @@ def execute_grasp(command_move_queue,
                                          joint_max_vel=70, joint_max_acc=70,
                                          line_max_vel=50, line_max_acc=50,
                                          state_data_array=state_array)
-            running_value.set(-1)
+            running_value.value = -1
             log.finish_show(f"机械臂{robot_brand}初始化成功")
 
         elif robot_brand == "moveit2":
             from RobotControl.moveit2_ctl import Moveit2Control
             robot_control = Moveit2Control(tool_end=tool_end,
                                            logger=log)
-            running_value.set(-1)
+            running_value.value = -1
             log.finish_show(f"{robot_brand}初始化成功")
 
         else:
@@ -59,7 +59,7 @@ def execute_grasp(command_move_queue,
             log.error_show(f"未找到机器人{robot_brand}")
 
     except Exception as e:
-        running_value.set(-2)
+        running_value.value = -2
         log.error_show(f"机械臂初始化失败{str(e)}")
         return
 
@@ -111,18 +111,18 @@ def execute_grasp(command_move_queue,
                 hand_ctl = None
 
         if pose_list is not None:
-            result_value.set(0)
+            result_value.value = 0
             # log.info_show("机械臂执行位置移动")
             try:
-                running_value.set(1)
+                running_value.value = 1
                 robot_control.move_to_waypoints(waypoints=pose_list,
                                                 coor=coor,
                                                 move_style=move_style,
                                                 offset=offset,
                                                 check_joints_degree_range=check_joints_range)
-                result_value.set(1)
+                result_value.value = 1
                 if command_move_queue.empty() is True:
-                    running_value.set(-1)
+                    running_value.value = -1
 
             except Exception as e:
                 log.error_show("机械臂位置移动失败，返回原点")
@@ -133,21 +133,21 @@ def execute_grasp(command_move_queue,
                 except Exception as e:
                     log.error_show("机械臂移动至初始点失败")
                     log.error_show(str(e))
-                result_value.set(-1)
+                result_value.value = -1
                 if command_move_queue.empty() is True:
-                    running_value.set(-1)
+                    running_value.value = -1
 
         elif joint_list is not None:
-            result_value.set(0)
+            result_value.value = 0
             # log.info_show("机械臂开始关节运动")
             try:
-                running_value.set(1)
+                running_value.value = 1
                 robot_control.move_to_waypoints_in_joint(waypoints_joint=joint_list,
                                                          move_style=move_style,
                                                          check_joints_degree_range=check_joints_range)
-                result_value.set(1)
+                result_value.value = 1
                 if command_move_queue.empty() is True:
-                    running_value.set(-1)
+                    running_value.value = -1
 
             except Exception as e:
                 log.error_show(f"机械臂关节移动失败{str(e)}，返回原点")
@@ -156,19 +156,19 @@ def execute_grasp(command_move_queue,
                 except Exception as e:
                     log.error_show("机械臂移动失败")
                     log.error_show(str(e))
-                result_value.set(-1)
+                result_value.value = -1
                 if command_move_queue.empty() is True:
-                    running_value.set(-1)
+                    running_value.value = -1
 
         elif offset != 0:
-            result_value.set(0)
+            result_value.value = 0
             # log.info_show("机械臂偏移运动")
             try:
-                running_value.set(1)
+                running_value.value = 1
                 robot_control.move_offset(offset=offset)
-                result_value.set(1)
+                result_value.value = 1
                 if command_move_queue.empty() is True:
-                    running_value.set(-1)
+                    running_value.value = -1
             except Exception as e:
                 log.error_show(f"机械臂偏移移动失败，返回原点,{e}")
                 try:
@@ -176,9 +176,9 @@ def execute_grasp(command_move_queue,
                 except Exception as e:
                     log.error_show("机械臂移动失败")
                     log.error_show(str(e))
-                result_value.set(-1)
+                result_value.value = -1
                 if command_move_queue.empty() is True:
-                    running_value.set(-1)
+                    running_value.value = -1
 
         elif grasp is not None and grasp_init is True:
             if grasp is True:
@@ -295,8 +295,8 @@ class RobotNode(QObject):
         self.command_move_queue = multiprocessing.Queue(1)
         self.command_ctl_queue = multiprocessing.Queue(1)
         self.command_ctl_result_queue = multiprocessing.Queue(1)
-        self.result_value = multiprocessing.Manager().Value('h', 0)  # 机械臂执行结果，0初始化，-1失败，1成功
-        self.running_value = multiprocessing.Manager().Value('h', 0)  # 机械臂当前状态，0初始化，-1待机，-2初始化失败，1运行
+        self.result_value = multiprocessing.Value('h', 0)  # 机械臂执行结果，0初始化，-1失败，1成功
+        self.running_value = multiprocessing.Value('h', 0)  # 机械臂当前状态，0初始化，-1待机，-2初始化失败，1运行
         self.info_queue = info_queue
         self.error_queue = error_queue
         self.tool_end_pose = tool_end

@@ -150,8 +150,8 @@ def zmq_sever_process(sys_argv: list):
         robot_brand = "dobot"
     else:
         robot_brand = sys_argv[1]
-    result_value = multiprocessing.Manager().Value('h', 0)
-    running_value = multiprocessing.Manager().Value('h', 0)
+    result_value = multiprocessing.Value('h', 0)
+    running_value = multiprocessing.Value('h', 0)
     grasp_init = False
     hand_ctl = None
 
@@ -174,7 +174,7 @@ def zmq_sever_process(sys_argv: list):
                                         max_line_vel=0.2, max_line_acc=0.1,
                                         max_angular_vel=40, max_angular_acc=20,
                                         max_joint_vel=90, max_joint_acc=50)
-            running_value.set(-1)
+            running_value.value = -1
             log.finish_show(f"机械臂{robot_brand}初始化成功")
 
         elif robot_brand == "dobot":
@@ -184,13 +184,13 @@ def zmq_sever_process(sys_argv: list):
                                          joint_max_vel=70, joint_max_acc=70,
                                          line_max_vel=50, line_max_acc=50,
                                          state_data_array=robot_state.data_array)
-            running_value.set(-1)
+            running_value.value = -1
             log.finish_show(f"机械臂{robot_brand}初始化成功")
 
         elif robot_brand == "moveit2":
             from RobotControl.moveit2_ctl import Moveit2Control
             robot_control = Moveit2Control(logger=log)
-            running_value.set(-1)
+            running_value.value = -1
             log.finish_show(f"{robot_brand}初始化成功")
 
         else:
@@ -198,7 +198,7 @@ def zmq_sever_process(sys_argv: list):
             log.error_show(f"未找到机器人{robot_brand}")
 
     except Exception as e:
-        running_value.set(-2)
+        running_value.value = -2
         log.error_show(f"机械臂初始化失败{str(e)}")
         return
 
@@ -255,59 +255,59 @@ def zmq_sever_process(sys_argv: list):
 
         if zmq_sever.is_exist_in_dict("move_to_pose"):
             param = zmq_sever.robot_msg_dict["move_to_pose"]
-            result_value.set(0)
+            result_value.value = 0
             try:
-                running_value.set(1)
+                running_value.value = 1
                 pose_rt = robot_control.pos_to_rmatrix(param["pos"], param["ori"])
                 robot_control.move_to_waypoints(waypoints=[pose_rt], coor=param["coor"],
                                                 move_style=param["move_style"], offset=param["offset"],
                                                 is_move_offset=param["is_move_offset"],
                                                 check_joints_degree_range=param["check_joints_degree_range"])
                 zmq_sever.send_recv_response({"move_to_pose": True})
-                result_value.set(1)
-                running_value.set(-1)
+                result_value.value = 1
+                running_value.value = -1
 
             except Exception as e:
                 zmq_sever.send_recv_response({"move_to_pose": False})
                 log.error_show(f"机械臂位置移动失败,{e}")
-                result_value.set(-1)
-                running_value.set(-1)
+                result_value.value = -1
+                running_value.value = -1
 
             continue
 
         if zmq_sever.is_exist_in_dict("move_to_joint"):
             param = zmq_sever.robot_msg_dict["move_to_joint"]
-            result_value.set(0)
+            result_value.value = 0
             try:
-                running_value.set(1)
+                running_value.value = 1
                 robot_control.move_to_waypoints_in_joint(waypoints_joint=[param["joints"]],
                                                          move_style=param["move_style"],
                                                          check_joints_degree_range=param[
                                                              "check_joints_degree_range"])
                 zmq_sever.send_recv_response({"move_to_joint": True})
-                result_value.set(1)
-                running_value.set(-1)
+                result_value.value = 1
+                running_value.value = -1
             except Exception as e:
                 log.error_show(f"机械臂关节移动失败{str(e)}")
                 zmq_sever.send_recv_response({"move_to_joint": False})
-                result_value.set(-1)
-                running_value.set(-1)
+                result_value.value = -1
+                running_value.value = -1
 
             continue
 
         if zmq_sever.is_exist_in_dict("move_offset"):
             param = zmq_sever.robot_msg_dict["move_offset"]
             try:
-                running_value.set(1)
+                running_value.value = 1
                 robot_control.move_offset(offset=param["offset"])
                 zmq_sever.send_recv_response({"move_offset": True})
-                result_value.set(1)
-                running_value.set(-1)
+                result_value.value = 1
+                running_value.value = -1
             except Exception as e:
                 log.error_show(f"机械臂偏移移动失败{e}")
                 zmq_sever.send_recv_response({"move_offset": False})
-                result_value.set(-1)
-                running_value.set(-1)
+                result_value.value = -1
+                running_value.value = -1
             continue
 
         if zmq_sever.is_exist_in_dict("grasper_execute") and grasp_init is True:
