@@ -356,7 +356,7 @@ class RobotNode(QObject):
             offset: 在目标点法线方向偏移的距离
             joint_list: 6个关节角度列表的列表（Nx6）
             grasp: 是否抓取
-            grasp_pos: 夹爪张开幅度 （0-1000‰, 1000代表145mm）
+            grasp_pos: 夹爪张开幅度 （0-0.145, 0.145代表145mm）
             grasp_force: 夹爪抓取力（20-100%, 100代表105N）
             suck: 是否吸取
             is_init_pose:是否回到初始位姿
