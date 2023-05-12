@@ -13,7 +13,8 @@ class Modbus:
 
 
 class ModbusCtl:
-    def __init__(self, log=None, ip="192.168.5.12", port=9502):
+    def __init__(self, log=None, ip="192.168.5.12", port=9502, slave_id=0x02):
+        self.slave_id = slave_id
         self.master = modbus_tcp.TcpMaster(host=ip, port=port)
         self.master.set_timeout(3.0)
         self.master.open()
@@ -24,7 +25,7 @@ class ModbusCtl:
 
     def write_single_coil(self, address, data):
         try:
-            self.master.execute(slave=0x01,
+            self.master.execute(slave=self.slave_id,
                                 function_code=defines.WRITE_SINGLE_COIL,
                                 starting_address=address,
                                 output_value=data)
@@ -36,7 +37,7 @@ class ModbusCtl:
 
     def read_input_registers(self, address, read_nums=1):
         try:
-            recv_data = self.master.execute(slave=0x01,
+            recv_data = self.master.execute(slave=self.slave_id,
                                             function_code=defines.READ_INPUT_REGISTERS,
                                             starting_address=address,
                                             quantity_of_x=read_nums)
@@ -49,7 +50,7 @@ class ModbusCtl:
 
     def write_holding_single_register(self, address, data):
         try:
-            self.master.execute(slave=0x01,
+            self.master.execute(slave=self.slave_id,
                                 function_code=defines.WRITE_SINGLE_REGISTER,
                                 starting_address=address,
                                 output_value=data)
@@ -61,8 +62,8 @@ class ModbusCtl:
 
 
 class UniversalGraspHandCtl(ModbusCtl):
-    def __init__(self, log=None, ip="192.168.5.12", port=9502):
-        super().__init__(log=log, ip=ip, port=port)
+    def __init__(self, log=None, ip="192.168.5.12", port=9502, slave_id=0x02):
+        super().__init__(log=log, ip=ip, port=port, slave_id=slave_id)
 
     def grasp(self, pos=0, force=50):
         self.write_single_coil(0x02, 0xFF00)
@@ -78,8 +79,8 @@ class UniversalGraspHandCtl(ModbusCtl):
 
 
 class PressureCtl(ModbusCtl):
-    def __init__(self, log=None, ip="192.168.5.12", port=9502):
-        super().__init__(log=log, ip=ip, port=port)
+    def __init__(self, log=None, ip="192.168.5.12", port=9502, slave_id=0x02):
+        super().__init__(log=log, ip=ip, port=port, slave_id=slave_id)
 
     def get_curr_pressure(self):
         recv_data = self.read_input_registers(address=0x05)
@@ -94,9 +95,10 @@ class DhModbus:
                  connect_type=Modbus.TCP_to_RTU,
                  ip="192.168.5.12", port=502,
                  rtu_port_name='COM3', baud_rate=115200,
+                 slave_id=0x01,
                  dobot_robot: DobotControl = None,
                  log=None):
-        self.gripper_ID = 0x02
+        self.gripper_ID = slave_id
         self.log = log
         self.connect_type = connect_type
 
@@ -145,7 +147,7 @@ class DhModbus:
                 data = self.robot.robot_ctl.GetHoldRegs(self.master_index, address, read_nums, "U16")
                 if data is None:
                     return None
-                recv_data = data[1][0]
+                recv_data = data[1]
             else:
                 recv_data = self.master.execute(slave=self.gripper_ID,
                                                 function_code=defines.READ_HOLDING_REGISTERS,
