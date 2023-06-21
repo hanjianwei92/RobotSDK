@@ -69,7 +69,7 @@ def execute_grasp(command_move_queue,
         robot_init_pos = \
             tuple(np.loadtxt(robot_init_joint))
     except Exception as e:
-        robot_init_pos = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        robot_init_pos = None
         log.error_show(f"未获得机器人初始位姿，{e}，设置为{robot_init_pos}")
 
     t = threading.Thread(target=cmd_ctl_thread, args=(robot_control, log, command_ctl_queue, command_ctl_result_queue))
@@ -128,7 +128,7 @@ def execute_grasp(command_move_queue,
                 log.error_show("机械臂位置移动失败，返回原点")
                 log.error_show(str(e))
                 try:
-                    if is_init_pose:
+                    if is_init_pose and robot_init_pos is not None:
                         robot_control.move_to_waypoints_in_joint([robot_init_pos])
                 except Exception as e:
                     log.error_show("机械臂移动至初始点失败")
@@ -152,7 +152,8 @@ def execute_grasp(command_move_queue,
             except Exception as e:
                 log.error_show(f"机械臂关节移动失败{str(e)}，返回原点")
                 try:
-                    robot_control.move_to_waypoints_in_joint([robot_init_pos])
+                    if is_init_pose and robot_init_pos is not None:
+                        robot_control.move_to_waypoints_in_joint([robot_init_pos])
                 except Exception as e:
                     log.error_show("机械臂移动失败")
                     log.error_show(str(e))
@@ -172,7 +173,8 @@ def execute_grasp(command_move_queue,
             except Exception as e:
                 log.error_show(f"机械臂偏移移动失败，返回原点,{e}")
                 try:
-                    robot_control.move_to_waypoints_in_joint([robot_init_pos])
+                    if is_init_pose and robot_init_pos is not None:
+                        robot_control.move_to_waypoints_in_joint([robot_init_pos])
                 except Exception as e:
                     log.error_show("机械臂移动失败")
                     log.error_show(str(e))
