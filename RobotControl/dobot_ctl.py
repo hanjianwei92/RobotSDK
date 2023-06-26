@@ -265,8 +265,9 @@ class DobotControl:
                             raise Exception(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
                                             所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
 
-                self.robot_move.JointMovJ(waypoint)
-                self.robot_move.Sync()
+                if self.robot_move.JointMovJ(waypoint)[0] != 0 or self.robot_move.Sync()[0] != 0:
+                    self.log.error_show("关节移动失败")
+                    raise Exception("关节移动失败")
                 error_info = self.robot_ctl.GetErrorID()
                 if error_info != "":
                     self.log.error_show("关节移动失败")
@@ -277,8 +278,13 @@ class DobotControl:
         elif move_style is RobotMoveStyle.move_joint_line:
             for waypoint in waypoints_joint:
                 waypoint_pos = self.robot_ctl.PositiveSolution(waypoint)[1]
-                self.robot_move.MovL(waypoint_pos)
-                self.robot_move.Sync()
+                if waypoint_pos is None:
+                    self.log.error_show("正解失败")
+                    self.robot_ctl.ClearError()
+                    raise Exception("正解失败")
+                if self.robot_move.MovL(waypoint_pos)[0] != 0 or self.robot_move.Sync()[0] != 0:
+                    self.log.error_show("直线移动失败")
+                    raise Exception("直线移动失败")
                 error_info = self.robot_ctl.GetErrorID()
                 if error_info != "":
                     self.log.error_show("直线移动失败")
