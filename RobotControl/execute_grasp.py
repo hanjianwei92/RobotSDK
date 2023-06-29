@@ -414,7 +414,7 @@ class RobotNode(QObject):
 
     def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None):
         if check_joints_range is None:
-            check_joints_range = [110, 110, 110, 110, 130, 180]
+            check_joints_range = [110, 110, 110, 110, 130, 360]
         self.result_value.value = 0
         self.send_grasp_cmd(joint_list=joint_list,
                             move_style=move_style,

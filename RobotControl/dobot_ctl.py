@@ -260,9 +260,9 @@ class DobotControl:
                     curr_joint = self.get_current_waypoint()[0]
                     for i in range(6):
                         if abs(curr_joint[i] - waypoint[i]) > check_joints_degree_range[i]:
-                            self.log.error_show(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
+                            self.log.error_show(f"机械臂第{i+1}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
                                            所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
-                            raise Exception(f"机械臂第{i}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
+                            raise Exception(f"机械臂第{i+1}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
                                             所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
 
                 if self.robot_move.JointMovJ(waypoint)[0] != 0 or self.robot_move.Sync()[0] != 0:
