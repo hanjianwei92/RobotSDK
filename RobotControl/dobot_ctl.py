@@ -264,6 +264,10 @@ class DobotControl:
                                            所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
                             raise Exception(f"机械臂第{i+1}轴移动{abs(curr_joint[i] - waypoint[i])}度，\
                                             所设的范围为{check_joints_degree_range[i]}度，超过移动范围")
+                if waypoint[5] >= 360:
+                    waypoint[5] = waypoint[5] - 360
+                if waypoint[5] <= -360:
+                    waypoint[5] = waypoint[5] + 360
 
                 if self.robot_move.JointMovJ(waypoint)[0] != 0 or self.robot_move.Sync()[0] != 0:
                     self.log.error_show("关节移动失败")
