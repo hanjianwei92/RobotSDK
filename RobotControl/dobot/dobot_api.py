@@ -250,11 +250,19 @@ class DobotApiDashboard(DobotApi):
     Define class dobot_api_dashboard to establish a connection to Dobot
     """
 
-    def EnableRobot(self):
+    def EnableRobot(self, load: float, centerX: float, centerY: float, centerZ: float):
         """
         Enable the robot
+        :param load: load of the robot arm (kg)
+        :param centerX: X coordinate of the center of gravity (m)
+        :param centerY: Y coordinate of the center of gravity (m)
+        :param centerZ: Z coordinate of the center of gravity (m)
         """
-        string = "EnableRobot()"
+        centerX = centerX * 1000
+        centerY = centerY * 1000
+        centerZ = centerZ * 1000
+
+        string = f"EnableRobot({load:f},{centerX:f},{centerY:f},{centerZ:f})"
         self.send_data(string)
         return self.wait_reply()
 

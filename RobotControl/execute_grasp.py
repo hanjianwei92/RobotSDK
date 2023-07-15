@@ -41,6 +41,7 @@ def execute_grasp(command_move_queue,
             robot_control = DobotControl(default_robot=True,
                                          logger=log,
                                          tool_end=tool_end,
+                                         global_speed=70, payload=2.5, collision_level=3,
                                          joint_max_vel=70, joint_max_acc=70,
                                          line_max_vel=50, line_max_acc=50,
                                          state_data_array=state_array)
