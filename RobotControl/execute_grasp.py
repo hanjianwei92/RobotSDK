@@ -391,7 +391,7 @@ class RobotNode(QObject):
         tmp = (cmd_num, arg1, arg2, arg3, arg4)
         self.command_ctl_queue.put(tmp)
 
-    def move_pose(self, pose_list, coor=RobotCoorStyle.base, move_style=RobotMoveStyle.move_joint_line,
+    def move_pose(self, pose_list, coor=RobotCoorStyle.base, move_style=RobotMoveStyle.move_joint,
                   offset=0.0, is_init=True, check_joints_range=None):
         if check_joints_range is None:
             check_joints_range = [110, 110, 110, 110, 130, 180]

@@ -334,7 +334,7 @@ class DobotControl:
     def move_to_waypoints(self,
                           waypoints: list,
                           coor: RobotCoorStyle = RobotCoorStyle.base,
-                          move_style: RobotMoveStyle = RobotMoveStyle.move_joint_line,
+                          move_style: RobotMoveStyle = RobotMoveStyle.move_joint,
                           offset: float = 0.0,
                           is_move_offset: bool = False,
                           check_joints_degree_range: list = None,
