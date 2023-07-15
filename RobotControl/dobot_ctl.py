@@ -334,7 +334,7 @@ class DobotControl:
     def move_to_waypoints(self,
                           waypoints: list,
                           coor: RobotCoorStyle = RobotCoorStyle.base,
-                          move_style: RobotMoveStyle = RobotMoveStyle.move_joint,
+                          move_style: RobotMoveStyle = RobotMoveStyle.move_joint_line,
                           offset: float = 0.0,
                           is_move_offset: bool = False,
                           check_joints_degree_range: list = None,
@@ -352,12 +352,37 @@ class DobotControl:
         :param acc_ratio: 加速度比例 0-100, 默认为0时使用全局加速度
         :return:
         """
-        waypoints_in_joint = self.get_move_to_waypoints(waypoints=waypoints, coor=coor, offset=offset)
-        if waypoints_in_joint is None:
-            self.log.error_show("move_to_waypoints, 逆解失败")
-            raise Exception("move_to_waypoints, 逆解失败")
-        self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range,
-                                        speed_ratio, acc_ratio)
+        if move_style == RobotMoveStyle.move_joint_line:
+            for waypoint in waypoints:
+                if coor == RobotCoorStyle.base:
+                    tool_waypoint_base = waypoint
+                elif coor == RobotCoorStyle.tool_end:
+                    tool_waypoint_base = self.end_to_base(waypoint, curr_pos, curr_ori)
+                else:
+                    tool_waypoint_base = self.end_to_base(waypoint)
+
+                if tool_waypoint_base is None:
+                    self.log.error_show("转换到基座标系失败")
+                    return None
+
+                flange_pos_on_end = np.array(
+                    [-self.tool_end['pos'][0], -self.tool_end['pos'][1], -(self.tool_end['pos'][2] + offset),
+                     1]).reshape((4, 1))
+                flange_pos_on_base = np.dot(tool_waypoint_base, flange_pos_on_end)[:3].squeeze().tolist()
+                flange_ori_on_base = Rotation.from_matrix(tool_waypoint_base[:3, :3]). \
+                    as_euler('xyz', degrees=True).squeeze().tolist()
+
+                waypoint_pos = flange_pos_on_base+flange_ori_on_base
+                if self.robot_move.MovL(waypoint_pos, speed_ratio, acc_ratio)[0] != 0 or self.robot_move.Sync()[0] != 0:
+                    self.log.error_show("直线移动失败")
+                    raise Exception("直线移动失败")
+        else:
+            waypoints_in_joint = self.get_move_to_waypoints(waypoints=waypoints, coor=coor, offset=offset)
+            if waypoints_in_joint is None:
+                self.log.error_show("move_to_waypoints, 逆解失败")
+                raise Exception("move_to_waypoints, 逆解失败")
+            self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range,
+                                            speed_ratio, acc_ratio)
         if is_move_offset is True:
             self.move_offset(offset)
 
