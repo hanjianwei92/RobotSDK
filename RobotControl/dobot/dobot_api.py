@@ -661,7 +661,7 @@ class DobotApiMove(DobotApi):
     Define class dobot_api_move to establish a connection to Dobot
     """
 
-    def MovJ(self, pos: list):
+    def MovJ(self, pos: list, SpeedJ: int = 0, AccJ: int = 0):
         """
         Joint motion interface (point-to-point motion mode)
         x: A number in the Cartesian coordinate system x
@@ -670,16 +670,28 @@ class DobotApiMove(DobotApi):
         rx: Position of Rx axis in Cartesian coordinate system
         ry: Position of Ry axis in Cartesian coordinate system
         rz: Position of Rz axis in Cartesian coordinate system
+        SpeedJ: Joint speed ratio (0-100%)
+        AccJ: Joint acceleration ratio (0-100%)
         """
         pos[0] *= 1000.0
         pos[1] *= 1000.0
         pos[2] *= 1000.0
-        string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
-            pos[0], pos[1], pos[2], pos[3], pos[4], pos[5])
+        if SpeedJ == 0 and AccJ == 0:
+            string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
+                         pos[0], pos[1], pos[2], pos[3], pos[4], pos[5])
+        elif SpeedJ == 0:
+            string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f},AccJ={:d})".format(
+                pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], AccJ)
+        elif AccJ == 0:
+            string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f},SpeedJ={:d})".format(
+                pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], SpeedJ)
+        else:
+            string = "MovJ({:f},{:f},{:f},{:f},{:f},{:f},SpeedJ={:d},AccJ={:d})".format(
+                         pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], SpeedJ, AccJ)
         self.send_data(string)
         return self.wait_reply(False)
 
-    def MovL(self, pos: list):
+    def MovL(self, pos: list, SpeedL: int = 0, AccL: int = 0):
         """
         Coordinate system motion interface (linear motion mode)
         x: A number in the Cartesian coordinate system x
@@ -688,22 +700,46 @@ class DobotApiMove(DobotApi):
         rx: Position of Rx axis in Cartesian coordinate system
         ry: Position of Ry axis in Cartesian coordinate system
         rz: Position of Rz axis in Cartesian coordinate system
+        SpeedL: Linear speed ratio (0-100%)
+        AccL: Linear acceleration ratio (0-100%)
         """
         pos[0] *= 1000.0
         pos[1] *= 1000.0
         pos[2] *= 1000.0
-        string = "MovL({:f},{:f},{:f},{:f},{:f},{:f})".format(
-            pos[0], pos[1], pos[2], pos[3], pos[4], pos[5])
+        if SpeedL == 0 and AccL == 0:
+            string = "MovL({:f},{:f},{:f},{:f},{:f},{:f})".format(
+                pos[0], pos[1], pos[2], pos[3], pos[4], pos[5])
+        elif SpeedL == 0:
+            string = "MovL({:f},{:f},{:f},{:f},{:f},{:f},AccL={:d})".format(
+                pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], AccL)
+        elif AccL == 0:
+            string = "MovL({:f},{:f},{:f},{:f},{:f},{:f},SpeedL={:d})".format(
+                pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], SpeedL)
+        else:
+            string = "MovL({:f},{:f},{:f},{:f},{:f},{:f},SpeedL={:d},AccL={:d})".format(
+                pos[0], pos[1], pos[2], pos[3], pos[4], pos[5], SpeedL, AccL)
         self.send_data(string)
         return self.wait_reply(False)
 
-    def JointMovJ(self, joint: list):
+    def JointMovJ(self, joint: list, SpeedJ: int = 0, AccJ: int = 0):
         """
         Joint motion interface (linear motion mode)
         j1~j6:Point position values on each joint
+        SpeedJ: Joint speed ratio (0-100%)
+        AccJ: Joint acceleration ratio (0-100%)
         """
-        string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
-            joint[0], joint[1], joint[2], joint[3], joint[4], joint[5])
+        if SpeedJ == 0 and AccJ == 0:
+            string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f})".format(
+                joint[0], joint[1], joint[2], joint[3], joint[4], joint[5])
+        elif SpeedJ == 0:
+            string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f},AccJ={:d})".format(
+                joint[0], joint[1], joint[2], joint[3], joint[4], joint[5], AccJ)
+        elif AccJ == 0:
+            string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f},SpeedJ={:d})".format(
+                joint[0], joint[1], joint[2], joint[3], joint[4], joint[5], SpeedJ)
+        else:
+            string = "JointMovJ({:f},{:f},{:f},{:f},{:f},{:f},SpeedJ={:d},AccJ={:d})".format(
+                joint[0], joint[1], joint[2], joint[3], joint[4], joint[5], SpeedJ, AccJ)
         self.send_data(string)
         return self.wait_reply(False)
 

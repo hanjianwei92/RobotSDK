@@ -11,14 +11,23 @@ class DobotControl:
                  tool_end=None,
                  ip='192.168.5.1',
                  port_ctl=29999, port_move=30003,
+                 global_speed=70,
                  joint_max_vel=50, joint_max_acc=50,
                  line_max_vel=50, line_max_acc=50,
                  state_data_array=None):
         """
         :param default_robot: 是否以默认参数初始化机械臂
+        :param logger: 日志记录器
         :param tool_end: 末端工具定义输入为字典dict(pos = (x,y,z),ori = (Rx, Ry, Rz)）
         :param ip: 机械臂IP
-        :param port_ctl: 机械臂Port
+        :param port_ctl: 机械臂控制指令Port
+        :param port_move: 机械臂运动指令Port
+        :param global_speed: 机械臂全局速度比例（1-100）
+        :param joint_max_vel: 机械臂关节最大速度比例（1-100）
+        :param joint_max_acc: 机械臂关节最大加速度比例（1-100）
+        :param line_max_vel: 机械臂末端最大速度比例（1-100）
+        :param line_max_acc: 机械臂末端最大加速度比例（1-100）
+        :param state_data_array: 机械臂状态数据数组
         """
         self.robot_brand = 'dobot'
         if tool_end is None:
@@ -36,6 +45,7 @@ class DobotControl:
         self.tool_end = tool_end
         if default_robot is True:
             self.init_robot_by_default()
+        self.set_global_speed(global_speed)
         self.set_joint_max_vel_and_acc(joint_max_vel=joint_max_vel, joint_max_acc=joint_max_acc)
         self.set_end_max_vel_and_acc(line_max_vel=line_max_vel, line_max_acc=line_max_acc)
 
@@ -74,9 +84,21 @@ class DobotControl:
             return None
         return 1
 
+    def set_global_speed(self, global_speed=70):
+        """
+        设置机器人全局速度 0-100，
+        机械臂再现时实际运动加速度/速度值 = 运动指令可选参数设置的比例 x 控制软件再现设置中的值 x 全局速度比例。
+        :param global_speed:  速度比例（1-100）
+        :return:
+        """
+        if self.robot_ctl.SpeedFactor(global_speed)[0]:
+            self.log.error_show(f"设置机器人全局速度失败")
+
     def set_joint_max_vel_and_acc(self, joint_max_vel=50, joint_max_acc=50):
         """
-        设置机器人关节最大速度与加速度
+        设置机器人关节最大速度与加速度。
+        与运动指令可选参数设置的比例作用一致，为运动指令没有设置可选参数指定加速度/速度比例时的全局默认值。
+        该命令设置的加速度比例仅在本次TCP/IP控制模式中生效，未设置时默认值为100。
         :param joint_max_vel: 单位比例（1-100）
         :param joint_max_acc:  单位比例（1-100）
         :return:
@@ -89,10 +111,11 @@ class DobotControl:
 
     def set_end_max_vel_and_acc(self, line_max_vel=0.45, line_max_acc=0.45):
         """
-        设置机器人末端最大速度与加速度
+        设置机器人末端最大速度与加速度。
+        与运动指令可选参数设置的比例作用一致，为运动指令没有设置可选参数指定加速度/速度比例时的全局默认值。
+        该命令设置的加速度比例仅在本次TCP/IP控制模式中生效，未设置时默认值为100。
         :param line_max_vel: 末端最大线速度  单位比例（1-100）
         :param line_max_acc: 末端最大线加速度 单位比例（1-100）
-
         :return:
         """
         if self.robot_ctl.AccL(line_max_acc)[0]:
@@ -228,30 +251,33 @@ class DobotControl:
             waypoints_joint.append(waypoint_joint)
         return waypoints_joint[1:]
 
-    def move_offset(self, offset, move_style: RobotMoveStyle = RobotMoveStyle.move_joint_line):
+    def move_offset(self, offset, speed_ratio=0, acc_ratio=0):
         """
-        向目标法线方向移动偏移距离
+        机器人末端沿着当前姿态的z轴方向移动offset距离
+        :param offset: 偏移距离
+        :param speed_ratio: 速度比例, 0-100, 默认为0时使用全局速度
+        :param acc_ratio: 加速度比例, 0-100, 默认为0时使用全局加速度
         """
         final_target_in_flange = self.pos_to_rmatrix([0, 0, offset], list(self.tool_end['ori']))
         rt_final = self.end_to_base(final_target_in_flange)
         pos = rt_final[:3, 3].squeeze().tolist()
         ori = Rotation.from_matrix(rt_final[:3, :3]).as_euler('xyz', degrees=True).squeeze().tolist()
-        curr_point_joint = self.get_current_waypoint()[0]
-        final_target_joint = self.robot_ctl.InverseSolution(pos + ori + [0, 0, 1] + curr_point_joint)[1]
-        if final_target_joint is None:
-            self.log.error_show("move_offset, 逆解失败")
-            self.robot_ctl.ClearError()
-            raise Exception("move offset, 逆解失败")
-        self.move_to_waypoints_in_joint([final_target_joint], move_style=move_style)
+        if self.robot_move.MovL([*pos, *ori], speed_ratio, acc_ratio)[0] != 0 or self.robot_move.Sync()[0] != 0:
+            self.log.error_show("move_offset,直线移动失败")
+            raise Exception("move_offset,直线移动失败")
 
     def move_to_waypoints_in_joint(self,
                                    waypoints_joint: list,
                                    move_style: RobotMoveStyle = RobotMoveStyle.move_joint,
-                                   check_joints_degree_range: list = None):
+                                   check_joints_degree_range: list = None,
+                                   speed_ratio: int = 0,
+                                   acc_ratio: int = 0):
         """
         :param waypoints_joint: 关节空间的路径点列表
         :param move_style: 移动类型
         :param check_joints_degree_range: 检查逆解轴的角度是否超出设定范围
+        :param speed_ratio: 速度比例 0-100, 默认为0时使用全局速度
+        :param acc_ratio: 加速度比例 0-100, 默认为0时使用全局加速度
         :return:
         """
         if move_style is RobotMoveStyle.move_joint:
@@ -269,7 +295,7 @@ class DobotControl:
                 if waypoint[5] <= -360:
                     waypoint[5] = waypoint[5] + 360
 
-                if self.robot_move.JointMovJ(waypoint)[0] != 0 or self.robot_move.Sync()[0] != 0:
+                if self.robot_move.JointMovJ(waypoint, speed_ratio, acc_ratio)[0] != 0 or self.robot_move.Sync()[0] != 0:
                     self.log.error_show("关节移动失败")
                     raise Exception("关节移动失败")
                 error_info = self.robot_ctl.GetErrorID()
@@ -286,7 +312,7 @@ class DobotControl:
                     self.log.error_show("正解失败")
                     self.robot_ctl.ClearError()
                     raise Exception("正解失败")
-                if self.robot_move.MovL(waypoint_pos)[0] != 0 or self.robot_move.Sync()[0] != 0:
+                if self.robot_move.MovL(waypoint_pos, speed_ratio, acc_ratio)[0] != 0 or self.robot_move.Sync()[0] != 0:
                     self.log.error_show("直线移动失败")
                     raise Exception("直线移动失败")
                 error_info = self.robot_ctl.GetErrorID()
@@ -304,7 +330,9 @@ class DobotControl:
                           move_style: RobotMoveStyle = RobotMoveStyle.move_joint,
                           offset: float = 0.0,
                           is_move_offset: bool = False,
-                          check_joints_degree_range: list = None):
+                          check_joints_degree_range: list = None,
+                          speed_ratio: int = 0,
+                          acc_ratio: int = 0):
         """
         在法兰坐标系下移动机械臂到指定点
         :param waypoints: 指定坐标系下目标点的坐标，元素为目标点Rt)
@@ -313,13 +341,16 @@ class DobotControl:
         :param offset: 机器人距离目标点的偏移
         :param is_move_offset: 是否需要偏移
         :param check_joints_degree_range: 检查逆解轴的角度是否超出设定范围
+        :param speed_ratio: 速度比例 0-100, 默认为0时使用全局速度
+        :param acc_ratio: 加速度比例 0-100, 默认为0时使用全局加速度
         :return:
         """
         waypoints_in_joint = self.get_move_to_waypoints(waypoints=waypoints, coor=coor, offset=offset)
         if waypoints_in_joint is None:
             self.log.error_show("move_to_waypoints, 逆解失败")
             raise Exception("move_to_waypoints, 逆解失败")
-        self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range)
+        self.move_to_waypoints_in_joint(waypoints_in_joint, move_style, check_joints_degree_range,
+                                        speed_ratio, acc_ratio)
         if is_move_offset is True:
             self.move_offset(offset)
 
