@@ -11,7 +11,8 @@ class DobotControl:
                  tool_end=None,
                  ip='192.168.5.1',
                  port_ctl=29999, port_move=30003,
-                 global_speed=70, payload=2.5, collision_level=3,
+                 global_speed=70, payload=2.0,
+                 collision_level=3, center_of_mass=(0.0, 0.0, 0.15),
                  joint_max_vel=50, joint_max_acc=50,
                  line_max_vel=50, line_max_acc=50,
                  state_data_array=None):
@@ -25,6 +26,7 @@ class DobotControl:
         :param global_speed: 机械臂全局速度比例（1-100）
         :param payload: 机械臂负载（kg）
         :param collision_level: 机械臂碰撞等级（0-5）
+        :param center_of_mass: 机械臂负载重心位置（x,y,z） m
         :param joint_max_vel: 机械臂关节最大速度比例（1-100）
         :param joint_max_acc: 机械臂关节最大加速度比例（1-100）
         :param line_max_vel: 机械臂末端最大速度比例（1-100）
@@ -46,12 +48,12 @@ class DobotControl:
         # 用户工具描述
         self.tool_end = tool_end
         if default_robot is True:
-            self.init_robot_by_default(collision_level=collision_level, payload=payload)
+            self.init_robot_by_default(collision_level=collision_level, payload=payload, center_of_mass=center_of_mass)
         self.set_global_speed(global_speed)
         self.set_joint_max_vel_and_acc(joint_max_vel=joint_max_vel, joint_max_acc=joint_max_acc)
         self.set_end_max_vel_and_acc(line_max_vel=line_max_vel, line_max_acc=line_max_acc)
 
-    def init_robot_by_default(self, collision_level=3, payload=2.5, center_of_mass=(0.15, 0.15, 0.15)):
+    def init_robot_by_default(self, collision_level=3, payload=2.0, center_of_mass=(0.0, 0.0, 0.15)):
         """
         以默认参数初始化机械臂
         :param collision_level: 碰撞等级 0-5 0为不检测碰撞
@@ -74,7 +76,7 @@ class DobotControl:
             self.log.error_show("机械臂初始化错误")
 
     def set_tool(self,
-                 payload=2.5,
+                 payload=2.0,
                  inertia=0.7):
         """
         设置碰撞等级与工具动力学参数
