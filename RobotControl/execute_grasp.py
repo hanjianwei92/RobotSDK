@@ -18,6 +18,8 @@ def execute_grasp(command_move_queue,
                   tool_end,
                   robot_brand,
                   robot_init_joint,
+                  payload,
+                  glob_speed_ratio=50,
                   state_array=None):
     log = CasLogger('logfiles/robot_move_log.log',
                     info_queue=info_queue,
@@ -33,6 +35,8 @@ def execute_grasp(command_move_queue,
                                         max_line_vel=0.2, max_line_acc=0.1,
                                         max_angular_vel=40, max_angular_acc=20,
                                         max_joint_vel=90, max_joint_acc=50,
+                                        payload=payload, collision_level=3,
+                                        center_of_mass=(0.0, 0.0, 0.15),
                                         info_queue=info_queue, error_queue=error_queue)
             running_value.value = -1
             log.finish_show(f"机械臂{robot_brand}初始化成功")
@@ -41,7 +45,7 @@ def execute_grasp(command_move_queue,
             robot_control = DobotControl(default_robot=True,
                                          logger=log,
                                          tool_end=tool_end,
-                                         global_speed=70, payload=2.0,
+                                         global_speed=glob_speed_ratio, payload=payload,
                                          collision_level=3, center_of_mass=(0.0, 0.0, 0.15),
                                          joint_max_vel=70, joint_max_acc=70,
                                          line_max_vel=50, line_max_acc=50,
@@ -294,7 +298,9 @@ class RobotNode(QObject):
                  error_queue,
                  tool_end,
                  robot_brand,
-                 robot_init_joint=None):
+                 robot_init_joint=None,
+                 payload=0.1,
+                 glob_speed_ratio=50):
         super().__init__()
         self.command_move_queue = multiprocessing.Queue(1)
         self.command_ctl_queue = multiprocessing.Queue(1)
@@ -306,6 +312,8 @@ class RobotNode(QObject):
         self.tool_end_pose = tool_end
         self.robot_brand = robot_brand
         self.robot_init_joint = robot_init_joint
+        self.payload = payload
+        self.glob_speed_ratio = glob_speed_ratio
         self.log = CasLogger('logfiles/robot_ctl_log.log',
                              info_queue=info_queue,
                              error_queue=error_queue)
@@ -332,6 +340,8 @@ class RobotNode(QObject):
                                                                                 self.tool_end_pose,
                                                                                 self.robot_brand,
                                                                                 self.robot_init_joint,
+                                                                                self.payload,
+                                                                                self.glob_speed_ratio,
                                                                                 robot_state.data_array))
 
         else:
@@ -344,7 +354,8 @@ class RobotNode(QObject):
                                                                                 self.error_queue,
                                                                                 self.tool_end_pose,
                                                                                 self.robot_brand,
-                                                                                self.robot_init_joint))
+                                                                                self.robot_init_joint,
+                                                                                self.payload))
 
         grasp_process.daemon = True
         grasp_process.start()

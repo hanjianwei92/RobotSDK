@@ -19,6 +19,8 @@ class AuboControl:
                  max_joint_vel=90, max_joint_acc=50,
                  tool_end=None,
                  ip='192.168.1.100', port=8899,
+                 payload=2.0, center_of_mass=(0.0, 0.0, 0.15),
+                 collision_level=3,
                  info_queue=None, error_queue=None):
         """
         :param default_robot: 是否以默认参数初始化机械臂
@@ -50,7 +52,7 @@ class AuboControl:
         # 用户工具描述
         self.tool_end = tool_end
         if default_robot is True:
-            self.init_robot_by_default()
+            self.init_robot_by_default(collision_level, payload, center_of_mass)
         self.set_joint_max_vel_and_acc(joint_max_vel=max_joint_vel, joint_max_acc=max_joint_acc)
         self.set_end_max_vel_and_acc(line_max_vel=max_line_vel, line_max_acc=max_line_acc,
                                      angular_max_acc=max_angular_acc, angular_max_vel=max_angular_vel)
@@ -65,14 +67,21 @@ class AuboControl:
         cur_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
         self.error_queue.put("<font color=\"#FF0000\">" + "【ERROR】" + str(cur_time) + ": " + error + "</font>")
 
-    def init_robot_by_default(self):
+    def init_robot_by_default(self, collision_level, payload, center_of_mass):
         """
         以默认参数初始化机械臂
         """
         if self.init_and_robot() is None:
             self.log_error("机械臂初始化错误")
 
-        if self.set_tool() is None:
+        tool_dynamics = dict(
+            # 位置（米）
+            position=tuple(center_of_mass),
+            # 负载（kg）
+            payload=payload,
+            # 惯量
+            inertia=(0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
+        if self.set_tool(collision_level, tool_dynamics) is None:
             self.log_error("机械臂初始化错误")
 
     def init_and_robot(self):
