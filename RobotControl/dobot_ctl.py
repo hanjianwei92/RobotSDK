@@ -11,10 +11,10 @@ class DobotControl:
                  tool_end=None,
                  ip='192.168.5.1',
                  port_ctl=29999, port_move=30003,
-                 global_speed=70, payload=2.0,
-                 collision_level=3, center_of_mass=(0.0, 0.0, 0.15),
-                 joint_max_vel=50, joint_max_acc=50,
-                 line_max_vel=50, line_max_acc=50,
+                 global_speed=50, payload=0.1,
+                 collision_level=3, center_of_mass=(0.0, 0.0, 0.05),
+                 joint_max_vel=100, joint_max_acc=100,
+                 line_max_vel=100, line_max_acc=100,
                  state_data_array=None):
         """
         :param default_robot: 是否以默认参数初始化机械臂

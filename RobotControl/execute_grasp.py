@@ -47,8 +47,8 @@ def execute_grasp(command_move_queue,
                                          tool_end=tool_end,
                                          global_speed=glob_speed_ratio, payload=payload,
                                          collision_level=3, center_of_mass=(0.0, 0.0, 0.15),
-                                         joint_max_vel=70, joint_max_acc=70,
-                                         line_max_vel=50, line_max_acc=50,
+                                         joint_max_vel=100, joint_max_acc=100,
+                                         line_max_vel=100, line_max_acc=100,
                                          state_data_array=state_array)
             running_value.value = -1
             log.finish_show(f"机械臂{robot_brand}初始化成功")
@@ -86,7 +86,7 @@ def execute_grasp(command_move_queue,
         tmp = command_move_queue.get()
         # log.info_show("机械臂收到命令")
         pose_list, coor, move_style, offset, joint_list, grasp, grasp_pos, \
-            grasp_force, suck, is_init_pose, check_joints_range, grasper_select = tmp
+            grasp_force, suck, is_init_pose, check_joints_range, grasper_select, speed_ratio, acc_ratio = tmp
 
         if grasper_select != 0:
             try:
@@ -125,7 +125,9 @@ def execute_grasp(command_move_queue,
                                                 coor=coor,
                                                 move_style=move_style,
                                                 offset=offset,
-                                                check_joints_degree_range=check_joints_range)
+                                                check_joints_degree_range=check_joints_range,
+                                                speed_ratio=speed_ratio,
+                                                acc_ratio=acc_ratio)
                 result_value.value = 1
                 if command_move_queue.empty() is True:
                     running_value.value = -1
@@ -150,7 +152,9 @@ def execute_grasp(command_move_queue,
                 running_value.value = 1
                 robot_control.move_to_waypoints_in_joint(waypoints_joint=joint_list,
                                                          move_style=move_style,
-                                                         check_joints_degree_range=check_joints_range)
+                                                         check_joints_degree_range=check_joints_range,
+                                                         speed_ratio=speed_ratio,
+                                                         acc_ratio=acc_ratio)
                 result_value.value = 1
                 if command_move_queue.empty() is True:
                     running_value.value = -1
@@ -172,7 +176,7 @@ def execute_grasp(command_move_queue,
             # log.info_show("机械臂偏移运动")
             try:
                 running_value.value = 1
-                robot_control.move_offset(offset=offset)
+                robot_control.move_offset(offset=offset, speed_ratio=speed_ratio, acc_ratio=acc_ratio)
                 result_value.value = 1
                 if command_move_queue.empty() is True:
                     running_value.value = -1
@@ -362,7 +366,7 @@ class RobotNode(QObject):
 
     def send_grasp_cmd(self, pose_list: list = None, coor=0, move_style=0, offset=0.0, joint_list: list = None,
                        grasp=None, grasp_pos=None, grasp_force=None, suck=None, is_init_pose=True,
-                       check_joints_range: list = None, grasper_select=0):
+                       check_joints_range: list = None, grasper_select=0, speed_ratio=0, acc_ratio=0):
         """
         Args:
             pose_list: 位姿矩阵（4x4）Rt的列表
@@ -379,11 +383,13 @@ class RobotNode(QObject):
             grasper_select: 选择使用的末端夹具其中 1：大寰485，2：大寰TCP，3：大寰越疆
                                                4：增广485，5：增广TCP，6：增广越疆
                                                7： gripper_moveit2， 8 or others：通用气动夹爪吸盘
+            speed_ratio: 速度比例
+            acc_ratio: 加速度比例
 
         Returns:
         """
         tmp = (pose_list, coor, move_style, offset, joint_list, grasp, grasp_pos, grasp_force, suck, is_init_pose,
-               check_joints_range, grasper_select)
+               check_joints_range, grasper_select, speed_ratio, acc_ratio)
         self.command_move_queue.put(tmp)
 
     def send_ctl_cmd(self, cmd_num, arg1=None, arg2=None, arg3=None, arg4=None):
@@ -403,7 +409,7 @@ class RobotNode(QObject):
         self.command_ctl_queue.put(tmp)
 
     def move_pose(self, pose_list, coor=RobotCoorStyle.base, move_style=RobotMoveStyle.move_joint,
-                  offset=0.0, is_init=True, check_joints_range=None):
+                  offset=0.0, is_init=True, check_joints_range=None, speed_ratio=0, acc_ratio=0):
         if check_joints_range is None:
             check_joints_range = [110, 110, 110, 110, 130, 180]
         self.result_value.value = 0
@@ -412,7 +418,9 @@ class RobotNode(QObject):
                             move_style=move_style,
                             offset=offset,
                             is_init_pose=is_init,
-                            check_joints_range=check_joints_range)
+                            check_joints_range=check_joints_range,
+                            speed_ratio=speed_ratio,
+                            acc_ratio=acc_ratio)
         while True:
             time.sleep(0.1)
             if self.result_value.value == 1:
@@ -426,13 +434,16 @@ class RobotNode(QObject):
             else:
                 continue
 
-    def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None):
+    def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None,
+                   speed_ratio=0, acc_ratio=0):
         if check_joints_range is None:
             check_joints_range = [110, 110, 110, 110, 130, 360]
         self.result_value.value = 0
         self.send_grasp_cmd(joint_list=joint_list,
                             move_style=move_style,
-                            check_joints_range=check_joints_range)
+                            check_joints_range=check_joints_range,
+                            speed_ratio=speed_ratio,
+                            acc_ratio=acc_ratio)
         while True:
             time.sleep(0.1)
             if self.result_value.value == 1:
@@ -446,9 +457,9 @@ class RobotNode(QObject):
             else:
                 continue
 
-    def move_offset(self, offset):
+    def move_offset(self, offset, speed_ratio=0, acc_ratio=0):
         self.result_value.value = 0
-        self.send_grasp_cmd(offset=offset)
+        self.send_grasp_cmd(offset=offset, speed_ratio=speed_ratio, acc_ratio=acc_ratio)
         while True:
             time.sleep(0.1)
             if self.result_value.value == 1:
