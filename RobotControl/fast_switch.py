@@ -31,22 +31,27 @@ class FastSwitcher:
             print(f"加载位姿错误 {e}")
             self.having_switcher = False
 
-    def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None):
+    def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None,
+                   speed_ratio=0, acc_ratio=0):
         if isinstance(self.robot, RobotNode):
-            return self.robot.move_joint(joint_list, move_style, check_joints_range)
+            return self.robot.move_joint(joint_list, move_style, check_joints_range, speed_ratio, acc_ratio)
         else:
-            self.robot.move_to_waypoints_in_joint(joint_list, move_style, check_joints_range)
+            self.robot.move_to_waypoints_in_joint(joint_list, move_style, check_joints_range, speed_ratio, acc_ratio)
             return True
 
-    def move_pose(self, pose_list, coor=0, move_style=0, offset=0.0, is_init=True, check_joints_range=None):
+    def move_pose(self, pose_list, coor=0, move_style=0, offset=0.0, is_init=True, check_joints_range=None,
+                  speed_ratio=0, acc_ratio=0):
         if isinstance(self.robot, RobotNode):
-            return self.robot.move_pose(pose_list, coor, move_style, offset, is_init, check_joints_range)
+            return self.robot.move_pose(pose_list, coor, move_style, offset, is_init, check_joints_range,
+                                        speed_ratio=speed_ratio, acc_ratio=acc_ratio)
         else:
             self.robot.move_to_waypoints(waypoints=pose_list,
                                          coor=coor,
                                          move_style=move_style,
                                          offset=offset,
-                                         check_joints_degree_range=check_joints_range)
+                                         check_joints_degree_range=check_joints_range,
+                                         speed_ratio=speed_ratio,
+                                         acc_ratio=acc_ratio)
             return True
 
     def get_save_fs_pose_json(self):
@@ -158,8 +163,8 @@ class FastSwitcher:
 
 if __name__ == "__main__":
     robot = RobotNode(info_queue=multiprocessing.Queue(), error_queue=multiprocessing.Queue(),
-                      tool_end=dict(pos=(0, 0, 0), ori=(0, 0, 0)),
-                      robot_brand="dobot")
+                      tool_end=dict(pos=(0, 0, 0), ori=(0, 0, 0)), robot_brand="dobot",
+                      glob_speed_ratio=50, payload=0.5)
     fs = FastSwitcher(str(Path(__file__).parent / "config/fs_pose.json"),
                       str(Path(__file__).parent / f"config/init_pose_joint.txt"),
                       robot)

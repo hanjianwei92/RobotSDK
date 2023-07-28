@@ -481,7 +481,9 @@ class SuckMotor:
 
 
 if __name__ == '__main__':
-    # grasp_hand = UniversalGraspHandCtl()
+    grasp_hand = UniversalGraspHandCtl()
+    grasp_hand.suck()
+    grasp_hand.release_suck()
     # grasp_hand.write_single_coil(0x0003, 0x0000)
     # grasp_hand.write_single_coil(0x00, 0x0000)
     # grasp_hand.write_holding_single_register(0x0006, 0)
@@ -500,9 +502,3 @@ if __name__ == '__main__':
     # grasp = SuckMotor(connect_type=Modbus.RTU)
     # time.sleep(5)
     # grasp.forward_rotation(7)
-
-    test = ModbusCtl(ip="192.168.1.88", port=502)
-
-    test.write_holding_single_register(6200, 1)
-    test.write_holding_single_register(6201, -1)
-    test.write_holding_single_register(6202, 1)
