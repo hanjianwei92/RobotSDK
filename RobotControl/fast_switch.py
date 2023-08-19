@@ -69,7 +69,7 @@ class FastSwitcher:
                   f"relative to robot flange).")
             pose_string = input()
             pose = pose_string.split(",")
-            fs_pose_dict[f"tool_end_{num}_pose"] = {"pos": [float(pose[0]), float(pose[1]), float(pose[2])], 
+            fs_pose_dict[f"tool_end_{num}_pose"] = {"pos": [float(pose[0]), float(pose[1]), float(pose[2])],
                                                     "ori": [float(pose[3]), float(pose[4]), float(pose[5])]}
 
             print(f"press enter to get fs_store_{num} pose")
@@ -105,6 +105,8 @@ class FastSwitcher:
         if self.current_switcher_num != num:
             print("current switcher num error")
             return False
+        if self.current_switcher_num == 0:
+            print("needn`t release switcher")
         try:
             self.robot.tool_end = dict(pos=[0.0, 0.0, 0.0], ori=[0.0, 0.0, 0.0])
             self.move_joint([self.fs_ready_pose_joint])
@@ -142,8 +144,8 @@ class FastSwitcher:
             print("don`t set fast switcher num")
             return False
         if self.current_switcher_num != 0:
-            print("please release switcher first")
-            return False
+            # print("please release switcher first")
+            self.release_switcher(self.current_switcher_num)
 
         try:
             self.robot.tool_end = dict(pos=[0.0, 0.0, 0.0], ori=[0.0, 0.0, 0.0])
@@ -168,7 +170,7 @@ class FastSwitcher:
             self.robot.move_offset(-0.40)
 
             self.move_joint([self.fs_ready_pose_joint])
-            
+
             self.robot.tool_end = self.fs_pose[f"tool_end_{num}_pose"]
             self.current_switcher_num = num
 
