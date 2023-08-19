@@ -22,6 +22,9 @@ class FastSwitcher:
         self.having_switcher = None
         self.fs_pose = None
 
+        # 当前末端执行器编号, -1表示未知, 0表示无末端执行器, 1表示夹爪, 2表示小吸盘, 3表示大吸盘, 4表示标定块
+        self.current_switcher_num = -1
+
         try:
             with open(fs_pose_json_path) as f:
                 self.fs_pose = json.load(f)
@@ -96,8 +99,14 @@ class FastSwitcher:
         return rt_mat
 
     def release_switcher(self, num):
+        if self.having_switcher is False or self.current_switcher_num == -1:
+            print("don`t set fast switcher num")
+            return False
+        if self.current_switcher_num != num:
+            print("current switcher num error")
+            return False
         try:
-            self.robot.tool_end = dict(pos=[0.0,0.0,0.0],ori=[0.0,0.0,0.0])
+            self.robot.tool_end = dict(pos=[0.0, 0.0, 0.0], ori=[0.0, 0.0, 0.0])
             self.move_joint([self.fs_ready_pose_joint])
             pose_rt_middle = self.pos_to_rmatrix(self.fs_pose[f"fs_middle_{num}"]["pos"],
                                                  self.fs_pose[f"fs_middle_{num}"]["ori"])
@@ -119,6 +128,8 @@ class FastSwitcher:
             self.robot.move_offset(-0.10)
             self.air_ctl.release()
 
+            self.current_switcher_num = 0
+
             return True
 
         except Exception as e:
@@ -127,8 +138,15 @@ class FastSwitcher:
             return False
 
     def connect_switcher(self, num):
+        if self.having_switcher is False or self.current_switcher_num == -1:
+            print("don`t set fast switcher num")
+            return False
+        if self.current_switcher_num != 0:
+            print("please release switcher first")
+            return False
+
         try:
-            self.robot.tool_end = dict(pos=[0.0,0.0,0.0],ori=[0.0,0.0,0.0])
+            self.robot.tool_end = dict(pos=[0.0, 0.0, 0.0], ori=[0.0, 0.0, 0.0])
             pose_rt_middle = self.pos_to_rmatrix(self.fs_pose[f"fs_middle_{num}"]["pos"],
                                                  self.fs_pose[f"fs_middle_{num}"]["ori"])
 
@@ -141,7 +159,7 @@ class FastSwitcher:
             self.air_ctl.grasp()
             self.robot.move_offset(0.10)
             self.air_ctl.release()
-            time.sleep(1)
+            time.sleep(0.1)
             self.robot.move_offset(-0.01)
 
             ret = self.move_pose([pose_rt_middle], offset=0.0, is_init=False, move_style=RobotMoveStyle.move_joint_line)
@@ -152,6 +170,7 @@ class FastSwitcher:
             self.move_joint([self.fs_ready_pose_joint])
             
             self.robot.tool_end = self.fs_pose[f"tool_end_{num}_pose"]
+            self.current_switcher_num = num
 
             return True
 
@@ -168,6 +187,6 @@ if __name__ == "__main__":
     fs = FastSwitcher(str(Path(__file__).parent / "config/fs_pose.json"),
                       str(Path(__file__).parent / f"config/init_pose_joint.txt"),
                       robot)
-    time.sleep(5)
-    if fs.release_switcher(1):
-        fs.connect_switcher(2)
+    fs.current_switcher_num = 2
+    # fs.get_save_fs_pose_json()
+    fs.release_switcher(2)
