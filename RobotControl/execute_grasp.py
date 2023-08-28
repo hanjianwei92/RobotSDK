@@ -279,6 +279,22 @@ def cmd_ctl_thread(robot_clt, log, command_ctl_queue, ctl_result_queue):
                 log.error_show(f"设置工具末端失败{str(e)}")
                 ctl_result_queue.put(-1)
 
+        elif cmd_num == 10:
+            try:
+                error_info = robot_clt.robot_ctl.GetErrorID()
+                ctl_result_queue.put(error_info)
+            except Exception as e:
+                log.error_show(f"获取dobot错误失败{str(e)}")
+                ctl_result_queue.put(-1)
+
+        elif cmd_num == 11:
+            try:
+                fs_statues = robot_clt.hand_ctl.get_fs_statue(arg1, arg2)
+                ctl_result_queue.put(fs_statues)
+            except Exception as e:
+                log.error_show(f"获取快换状态失败{str(e)}")
+                ctl_result_queue.put(-1)
+
         elif cmd_num == 20 and robot_clt.robot_brand == "dobot":
             try:
                 error_id = robot_clt.robot_ctl.ClearError()
@@ -398,7 +414,7 @@ class RobotNode(QObject):
             cmd_num: 命令代码
                 1：get_current_waypoint。2：get_move_to_waypoints。3：get_current_robot_state。
                 4：move_stop。5：disconnect_robot。6：pos_to_rmatrix。7：get_tool_end_pos。
-                8：get_tool。9：set_tool_end
+                8：get_tool。9：set_tool_end。10：get_error_id。11：get_fs_statue。
                 20：ClearError。 21：StartDrag
             arg1: 参数一
             arg2: 参数二
@@ -526,6 +542,16 @@ class RobotNode(QObject):
     def tool_end(self, pose:dict):
         self.send_ctl_cmd(9, pose)
         self.command_ctl_result_queue.get()
+
+    def get_error_id(self):
+        self.send_ctl_cmd(10)
+        error_info = self.command_ctl_result_queue.get()
+        return error_info
+
+    def get_fs_statue(self, fs_id, num=1):
+        self.send_ctl_cmd(11, fs_id, num)
+        fs_statues = self.command_ctl_result_queue.get()
+        return fs_statues
 
     def start_drag(self, status):
         self.send_ctl_cmd(21, status)

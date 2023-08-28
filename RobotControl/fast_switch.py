@@ -23,7 +23,7 @@ class FastSwitcher:
         self.fs_pose = None
 
         # 当前末端执行器编号, -1表示未知, 0表示无末端执行器, 1表示夹爪, 2表示小吸盘, 3表示大吸盘, 4表示标定块
-        self.current_switcher_num = -1
+        self.current_switcher_num = self.get_curr_fs_num()
 
         try:
             with open(fs_pose_json_path) as f:
@@ -33,6 +33,16 @@ class FastSwitcher:
         except Exception as e:
             print(f"加载位姿错误 {e}")
             self.having_switcher = False
+
+    def get_curr_fs_num(self):
+        fs_statues = self.air_ctl.get_fs_statue(1, 4)
+        fs_statues = np.array(fs_statues).squeeze()
+        if np.sum(fs_statues) == 4:
+            return 0
+        elif np.sum(fs_statues) == 3:
+            return np.argwhere(fs_statues == 0)[0][0] + 1
+        else:
+            return -1
 
     def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None,
                    speed_ratio=0, acc_ratio=0):
@@ -116,10 +126,10 @@ class FastSwitcher:
             pose_rt_store = self.pos_to_rmatrix(self.fs_pose[f"fs_store_{num}"]["pos"],
                                                 self.fs_pose[f"fs_store_{num}"]["ori"])
 
-            ret = self.move_pose([pose_rt_middle], offset=0.40, is_init=False)
+            ret = self.move_pose([pose_rt_middle], offset=0.30, is_init=False)
             if ret is False:
                 raise Exception("error")
-            self.robot.move_offset(0.40)
+            self.robot.move_offset(0.30)
 
             ret = self.move_pose([pose_rt_store], offset=0.01, is_init=False, move_style=RobotMoveStyle.move_joint_line)
             if ret is False:
@@ -127,6 +137,7 @@ class FastSwitcher:
             self.robot.move_offset(0.01)
 
             self.air_ctl.grasp()
+            time.sleep(0.1)
             self.robot.move_offset(-0.10)
             self.air_ctl.release()
 
@@ -167,7 +178,7 @@ class FastSwitcher:
             ret = self.move_pose([pose_rt_middle], offset=0.0, is_init=False, move_style=RobotMoveStyle.move_joint_line)
             if ret is False:
                 raise Exception("error")
-            self.robot.move_offset(-0.40)
+            self.robot.move_offset(-0.30)
 
             self.move_joint([self.fs_ready_pose_joint])
 
@@ -189,6 +200,5 @@ if __name__ == "__main__":
     fs = FastSwitcher(str(Path(__file__).parent / "config/fs_pose.json"),
                       str(Path(__file__).parent / f"config/init_pose_joint.txt"),
                       robot)
-    fs.current_switcher_num = 2
     # fs.get_save_fs_pose_json()
     fs.release_switcher(2)

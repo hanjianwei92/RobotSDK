@@ -23,6 +23,19 @@ class ModbusCtl:
         # a = struct.pack("!" + "B" * 12, *data)
         # self.tcp_client_socket.send(a)
 
+    def read_discrete_inputs(self, address, read_nums=1):
+        try:
+            recv_data = self.master.execute(slave=self.slave_id,
+                                            function_code=defines.READ_DISCRETE_INPUTS,
+                                            starting_address=address,
+                                            quantity_of_x=read_nums)
+            return recv_data
+        except Exception as e:
+            if self.log is None:
+                print(str(e))
+            else:
+                self.log.error_show(str(e))
+
     def write_single_coil(self, address, data):
         try:
             self.master.execute(slave=self.slave_id,
@@ -76,6 +89,10 @@ class UniversalGraspHandCtl(ModbusCtl):
 
     def release_suck(self):
         self.write_single_coil(0x01, 0x0000)
+
+    def get_fs_statue(self, fs_id, read_nums=1):
+        recv_data = self.read_discrete_inputs(address=0x00+fs_id, read_nums=read_nums)
+        return recv_data
 
 
 class PressureCtl(ModbusCtl):
@@ -217,6 +234,7 @@ class DhModbus:
             curr_grasp_statue = self.get_curr_grasp_statue()
             if curr_grasp_statue is None or curr_grasp_statue[0] == 2 or curr_grasp_statue[0] == 1:
                 break
+            time.sleep(0.1)
 
     def release(self, pos=0.145):
         if pos is None:
