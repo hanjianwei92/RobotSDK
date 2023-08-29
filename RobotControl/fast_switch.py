@@ -109,6 +109,7 @@ class FastSwitcher:
         return rt_mat
 
     def release_switcher(self, num):
+        self.current_switcher_num = self.get_curr_fs_num()
         if self.having_switcher is False or self.current_switcher_num == -1:
             print("don`t set fast switcher num")
             return False
@@ -116,7 +117,8 @@ class FastSwitcher:
             print("current switcher num error")
             return False
         if self.current_switcher_num == 0:
-            print("needn`t release switcher")
+            print("don`t need release switcher")
+            return True
         try:
             self.robot.tool_end = dict(pos=[0.0, 0.0, 0.0], ori=[0.0, 0.0, 0.0])
             self.move_joint([self.fs_ready_pose_joint])
@@ -141,7 +143,7 @@ class FastSwitcher:
             self.robot.move_offset(-0.10)
             self.air_ctl.release()
 
-            self.current_switcher_num = 0
+            self.current_switcher_num = self.get_curr_fs_num()
 
             return True
 
@@ -151,10 +153,16 @@ class FastSwitcher:
             return False
 
     def connect_switcher(self, num):
+        self.current_switcher_num = self.get_curr_fs_num()
         if self.having_switcher is False or self.current_switcher_num == -1:
             print("don`t set fast switcher num")
             return False
-        if self.current_switcher_num != 0:
+
+        if self.current_switcher_num == num:
+            print("don`t need change fast switcher")
+            return True
+
+        if self.current_switcher_num != 0 and self.current_switcher_num != num:
             # print("please release switcher first")
             self.release_switcher(self.current_switcher_num)
 
@@ -183,7 +191,7 @@ class FastSwitcher:
             self.move_joint([self.fs_ready_pose_joint])
 
             self.robot.tool_end = self.fs_pose[f"tool_end_{num}_pose"]
-            self.current_switcher_num = num
+            self.current_switcher_num = self.get_curr_fs_num()
 
             return True
 
@@ -201,4 +209,4 @@ if __name__ == "__main__":
                       str(Path(__file__).parent / f"config/init_pose_joint.txt"),
                       robot)
     # fs.get_save_fs_pose_json()
-    fs.release_switcher(2)
+    fs.connect_switcher(2)
