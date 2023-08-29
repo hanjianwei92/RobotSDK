@@ -160,6 +160,7 @@ class FastSwitcher:
 
         if self.current_switcher_num == num:
             print("don`t need change fast switcher")
+            self.robot.tool_end = self.fs_pose[f"tool_end_{num}_pose"]
             return True
 
         if self.current_switcher_num != 0 and self.current_switcher_num != num:

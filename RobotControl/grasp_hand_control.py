@@ -23,55 +23,72 @@ class ModbusCtl:
         # a = struct.pack("!" + "B" * 12, *data)
         # self.tcp_client_socket.send(a)
 
-    def read_discrete_inputs(self, address, read_nums=1):
-        try:
-            recv_data = self.master.execute(slave=self.slave_id,
-                                            function_code=defines.READ_DISCRETE_INPUTS,
-                                            starting_address=address,
-                                            quantity_of_x=read_nums)
-            return recv_data
-        except Exception as e:
-            if self.log is None:
-                print(str(e))
-            else:
-                self.log.error_show(str(e))
+    def read_discrete_inputs(self, address, read_nums=1, try_times=3):
+        cnt = 0
+        while cnt < try_times:
+            try:
+                recv_data = self.master.execute(slave=self.slave_id,
+                                                function_code=defines.READ_DISCRETE_INPUTS,
+                                                starting_address=address,
+                                                quantity_of_x=read_nums)
+                return recv_data
+            except Exception as e:
+                if self.log is None:
+                    print(str(e))
+                else:
+                    self.log.error_show(str(e))
+                cnt += 1
+                time.sleep(0.1)
 
-    def write_single_coil(self, address, data):
-        try:
-            self.master.execute(slave=self.slave_id,
-                                function_code=defines.WRITE_SINGLE_COIL,
-                                starting_address=address,
-                                output_value=data)
-        except Exception as e:
-            if self.log is None:
-                print(str(e))
-            else:
-                self.log.error_show(str(e))
+    def write_single_coil(self, address, data, try_times=3):
+        cnt = 0
+        while cnt < try_times:
+            try:
+                self.master.execute(slave=self.slave_id,
+                                    function_code=defines.WRITE_SINGLE_COIL,
+                                    starting_address=address,
+                                    output_value=data)
+                return
+            except Exception as e:
+                if self.log is None:
+                    print(str(e))
+                else:
+                    self.log.error_show(str(e))
+                cnt += 1
+                time.sleep(0.1)
 
-    def read_input_registers(self, address, read_nums=1):
-        try:
-            recv_data = self.master.execute(slave=self.slave_id,
-                                            function_code=defines.READ_INPUT_REGISTERS,
-                                            starting_address=address,
-                                            quantity_of_x=read_nums)
-            return recv_data
-        except Exception as e:
-            if self.log is None:
-                print(str(e))
-            else:
-                self.log.error_show(str(e))
+    def read_input_registers(self, address, read_nums=1, try_times=3):
+        cnt = 0
+        while cnt < try_times:
+            try:
+                recv_data = self.master.execute(slave=self.slave_id,
+                                                function_code=defines.READ_INPUT_REGISTERS,
+                                                starting_address=address,
+                                                quantity_of_x=read_nums)
+                return recv_data
+            except Exception as e:
+                if self.log is None:
+                    print(str(e))
+                else:
+                    self.log.error_show(str(e))
+                cnt += 1
+                time.sleep(0.1)
 
-    def write_holding_single_register(self, address, data):
-        try:
-            self.master.execute(slave=self.slave_id,
-                                function_code=defines.WRITE_SINGLE_REGISTER,
-                                starting_address=address,
-                                output_value=data)
-        except Exception as e:
-            if self.log is None:
-                print(str(e))
-            else:
-                self.log.error_show(str(e))
+    def write_holding_single_register(self, address, data, try_times=3):
+        cnt = 0
+        while cnt < try_times:
+            try:
+                self.master.execute(slave=self.slave_id,
+                                    function_code=defines.WRITE_SINGLE_REGISTER,
+                                    starting_address=address,
+                                    output_value=data)
+            except Exception as e:
+                if self.log is None:
+                    print(str(e))
+                else:
+                    self.log.error_show(str(e))
+                cnt += 1
+                time.sleep(0.1)
 
 
 class UniversalGraspHandCtl(ModbusCtl):
