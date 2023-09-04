@@ -12,10 +12,9 @@ class FastSwitcher:
     def __init__(self,
                  fs_pose_json_path: str,
                  robot_init_pos_joint: str,
-                 robot_ctl: Union[RobotNode, DobotControl]):
+                 robot_ctl: RobotNode):
         self.robot = robot_ctl
         self.fs_pose_json_path = fs_pose_json_path
-        self.air_ctl = UniversalGraspHandCtl()
 
         self.fs_ready_pose_joint = None
 
@@ -35,7 +34,7 @@ class FastSwitcher:
             self.having_switcher = False
 
     def get_curr_fs_num(self):
-        fs_statues = self.air_ctl.get_fs_statue(1, 4)
+        fs_statues = self.robot.get_fs_statue(1, 4)
         fs_statues = np.array(fs_statues).squeeze()
         if np.sum(fs_statues) == 4:
             return 0
@@ -46,26 +45,12 @@ class FastSwitcher:
 
     def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None,
                    speed_ratio=0, acc_ratio=0):
-        if isinstance(self.robot, RobotNode):
-            return self.robot.move_joint(joint_list, move_style, check_joints_range, speed_ratio, acc_ratio)
-        else:
-            self.robot.move_to_waypoints_in_joint(joint_list, move_style, check_joints_range, speed_ratio, acc_ratio)
-            return True
+        return self.robot.move_joint(joint_list, move_style, check_joints_range, speed_ratio, acc_ratio)
 
     def move_pose(self, pose_list, coor=0, move_style=0, offset=0.0, is_init=True, check_joints_range=None,
                   speed_ratio=0, acc_ratio=0):
-        if isinstance(self.robot, RobotNode):
-            return self.robot.move_pose(pose_list, coor, move_style, offset, is_init, check_joints_range,
-                                        speed_ratio=speed_ratio, acc_ratio=acc_ratio)
-        else:
-            self.robot.move_to_waypoints(waypoints=pose_list,
-                                         coor=coor,
-                                         move_style=move_style,
-                                         offset=offset,
-                                         check_joints_degree_range=check_joints_range,
-                                         speed_ratio=speed_ratio,
-                                         acc_ratio=acc_ratio)
-            return True
+        return self.robot.move_pose(pose_list, coor, move_style, offset, is_init, check_joints_range,
+                                    speed_ratio=speed_ratio, acc_ratio=acc_ratio)
 
     def get_save_fs_pose_json(self):
         fs_pose_dict = dict()
@@ -138,10 +123,10 @@ class FastSwitcher:
                 raise Exception("error")
             self.robot.move_offset(0.01)
 
-            self.air_ctl.grasp()
+            self.robot.fs_grasp(True)
             time.sleep(0.1)
             self.robot.move_offset(-0.10)
-            self.air_ctl.release()
+            self.robot.fs_grasp(False)
 
             self.current_switcher_num = self.get_curr_fs_num()
 
@@ -166,6 +151,11 @@ class FastSwitcher:
         if self.current_switcher_num != 0 and self.current_switcher_num != num:
             # print("please release switcher first")
             self.release_switcher(self.current_switcher_num)
+            if self.current_switcher_num != 0:
+                print("release switcher failed")
+                return False
+            else:
+                print("release switcher success")
 
         try:
             self.robot.tool_end = dict(pos=[0.0, 0.0, 0.0], ori=[0.0, 0.0, 0.0])
@@ -178,9 +168,9 @@ class FastSwitcher:
             ret = self.move_pose([pose_rt_store], offset=0.10, is_init=False)
             if ret is False:
                 raise Exception("error")
-            self.air_ctl.grasp()
+            self.robot.fs_grasp(True)
             self.robot.move_offset(0.10)
-            self.air_ctl.release()
+            self.robot.fs_grasp(False)
             time.sleep(0.1)
             self.robot.move_offset(-0.01)
 

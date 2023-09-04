@@ -45,6 +45,7 @@ def execute_grasp(command_move_queue,
             robot_control = DobotControl(default_robot=True,
                                          logger=log,
                                          tool_end=tool_end,
+                                         ip="192.168.10.41",
                                          global_speed=glob_speed_ratio, payload=payload,
                                          collision_level=3, center_of_mass=(0.0, 0.0, 0.15),
                                          joint_max_vel=100, joint_max_acc=100,
@@ -78,35 +79,39 @@ def execute_grasp(command_move_queue,
         robot_init_pos = None
         log.error_show(f"未获得机器人初始位姿，{e}，设置为{robot_init_pos}")
 
-    t = threading.Thread(target=cmd_ctl_thread, args=(robot_control, log, command_ctl_queue, command_ctl_result_queue))
+    universal_ctl = UniversalGraspHandCtl(log=log)
+
+    t = threading.Thread(target=cmd_ctl_thread, args=(robot_control, universal_ctl,
+                                                      log, command_ctl_queue, command_ctl_result_queue))
     t.daemon = True
     t.start()
 
     while True:
         tmp = command_move_queue.get()
         # log.info_show("机械臂收到命令")
-        pose_list, coor, move_style, offset, joint_list, grasp, grasp_pos, \
-            grasp_force, suck, is_init_pose, check_joints_range, grasper_select, speed_ratio, acc_ratio = tmp
+        pose_list, coor, move_style, offset, joint_list, grasp, grasp_pos,  grasp_force, suck, is_init_pose, \
+            check_joints_range, grasper_select, speed_ratio, acc_ratio, blow, fs_grasp = tmp
 
         if grasper_select != 0:
             try:
+                if hasattr(hand_ctl, "master"):
+                    hand_ctl.master.close()
+
                 if grasper_select == 1:
                     hand_ctl = DhModbus(connect_type=0, rtu_port_name='COM3', baud_rate=115200, log=log)
                 elif grasper_select == 2:
-                    hand_ctl = DhModbus(connect_type=1, ip="192.168.5.12", port=502, log=log)
+                    hand_ctl = DhModbus(connect_type=1, ip="192.168.10.42", port=502, log=log)
                 elif grasper_select == 3:
                     hand_ctl = DhModbus(connect_type=2, dobot_robot=robot_control, log=log)
                 elif grasper_select == 4:
                     hand_ctl = RMHandModbus(connect_type=0, rtu_port_name='COM4', baud_rate=115200, log=log)
                 elif grasper_select == 5:
-                    hand_ctl = RMHandModbus(connect_type=1, ip="192.168.5.12", port=502, log=log)
+                    hand_ctl = RMHandModbus(connect_type=1, ip="192.168.10.42", port=502, log=log)
                 elif grasper_select == 6:
                     hand_ctl = RMHandModbus(connect_type=2, dobot_robot=robot_control, log=log)
                 elif grasper_select == 7:
                     from RobotControl.moveit2_ctl import GripperMoveit
                     hand_ctl = GripperMoveit()
-                else:
-                    hand_ctl = UniversalGraspHandCtl(log=log)
 
                 grasp_init = True
                 log.finish_show("夹爪初始成功")
@@ -198,14 +203,26 @@ def execute_grasp(command_move_queue,
             else:
                 hand_ctl.release(pos=grasp_pos)
 
-        elif suck is not None and grasp_init is True:
+        elif suck is not None:
             if suck is True:
-                hand_ctl.suck()
+                universal_ctl.suck()
             else:
-                hand_ctl.release_suck()
+                universal_ctl.release_suck()
+
+        elif blow is not None:
+            if blow is True:
+                universal_ctl.blow()
+            else:
+                universal_ctl.release_blow()
+
+        elif fs_grasp is not None:
+            if fs_grasp is True:
+                universal_ctl.grasp()
+            else:
+                universal_ctl.release()
 
 
-def cmd_ctl_thread(robot_clt, log, command_ctl_queue, ctl_result_queue):
+def cmd_ctl_thread(robot_clt, universal_ctl, log, command_ctl_queue, ctl_result_queue):
     while True:
         cmd_num, arg1, arg2, arg3, arg4 = command_ctl_queue.get()
         if cmd_num == 1:
@@ -289,7 +306,7 @@ def cmd_ctl_thread(robot_clt, log, command_ctl_queue, ctl_result_queue):
 
         elif cmd_num == 11:
             try:
-                fs_statues = robot_clt.hand_ctl.get_fs_statue(arg1, arg2)
+                fs_statues = universal_ctl.get_fs_statue(arg1, arg2)
                 ctl_result_queue.put(fs_statues)
             except Exception as e:
                 log.error_show(f"获取快换状态失败{str(e)}")
@@ -382,7 +399,8 @@ class RobotNode(QObject):
 
     def send_grasp_cmd(self, pose_list: list = None, coor=0, move_style=0, offset=0.0, joint_list: list = None,
                        grasp=None, grasp_pos=None, grasp_force=None, suck=None, is_init_pose=True,
-                       check_joints_range: list = None, grasper_select=0, speed_ratio=0, acc_ratio=0):
+                       check_joints_range: list = None, grasper_select=0, speed_ratio=0, acc_ratio=0,
+                       blow=None, fs_grasp=None):
         """
         Args:
             pose_list: 位姿矩阵（4x4）Rt的列表
@@ -401,11 +419,13 @@ class RobotNode(QObject):
                                                7： gripper_moveit2， 8 or others：通用气动夹爪吸盘
             speed_ratio: 速度比例
             acc_ratio: 加速度比例
+            blow: 是否吹气
+            fs_grasp: 是否快换抓取
 
         Returns:
         """
         tmp = (pose_list, coor, move_style, offset, joint_list, grasp, grasp_pos, grasp_force, suck, is_init_pose,
-               check_joints_range, grasper_select, speed_ratio, acc_ratio)
+               check_joints_range, grasper_select, speed_ratio, acc_ratio, blow, fs_grasp)
         self.command_move_queue.put(tmp)
 
     def send_ctl_cmd(self, cmd_num, arg1=None, arg2=None, arg3=None, arg4=None):
@@ -427,7 +447,7 @@ class RobotNode(QObject):
     def move_pose(self, pose_list, coor=RobotCoorStyle.base, move_style=RobotMoveStyle.move_joint,
                   offset=0.0, is_init=True, check_joints_range=None, speed_ratio=0, acc_ratio=0):
         if check_joints_range is None:
-            check_joints_range = [110, 110, 110, 110, 130, 180]
+            check_joints_range = [180, 180, 180, 180, 180, 360]
         self.result_value.value = 0
         self.send_grasp_cmd(pose_list=pose_list,
                             coor=coor,
@@ -453,7 +473,7 @@ class RobotNode(QObject):
     def move_joint(self, joint_list, move_style=RobotMoveStyle.move_joint, check_joints_range=None,
                    speed_ratio=0, acc_ratio=0):
         if check_joints_range is None:
-            check_joints_range = [110, 110, 110, 110, 130, 360]
+            check_joints_range = [180, 180, 180, 180, 180, 360]
         self.result_value.value = 0
         self.send_grasp_cmd(joint_list=joint_list,
                             move_style=move_style,
@@ -498,6 +518,12 @@ class RobotNode(QObject):
     def switch_grasper(self, grasper):
         self.send_grasp_cmd(grasper_select=grasper)
 
+    def sucker_blow(self, blow):
+        self.send_grasp_cmd(blow=blow)
+
+    def fs_grasp(self, fs_grasp):
+        self.send_grasp_cmd(fs_grasp=fs_grasp)
+
     def get_current_waypoint(self):
         self.send_ctl_cmd(1)
         joint, end_pos, end_ori = self.command_ctl_result_queue.get()
@@ -534,12 +560,12 @@ class RobotNode(QObject):
         return pos, ori
 
     @property
-    def tool_end(self) ->dict:
+    def tool_end(self) -> dict:
         self.send_ctl_cmd(8)
         return self.command_ctl_result_queue.get()
 
     @tool_end.setter
-    def tool_end(self, pose:dict):
+    def tool_end(self, pose: dict):
         self.send_ctl_cmd(9, pose)
         self.command_ctl_result_queue.get()
 

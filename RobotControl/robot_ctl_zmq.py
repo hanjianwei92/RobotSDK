@@ -5,8 +5,7 @@ import sys
 import multiprocessing
 from pathlib import Path
 from typing import Optional
-from RobotControl import DobotControl, DobotApiState, UniversalGraspHandCtl, DhModbus, RMHandModbus, \
-    CasLogger, FastSwitcher
+from RobotControl import RobotNode, CasLogger, FastSwitcher
 
 
 class RobotSeverZMQ:
@@ -41,13 +40,13 @@ class RobotSeverZMQ:
         return self.robot_msg_dict is not None and key in self.robot_msg_dict
 
 
-def robot_cmd(robot_control, log):
+def robot_cmd(robot_control: RobotNode, log):
     zmq_sever = RobotSeverZMQ(port=8101)
     while True:
         zmq_sever.recv_msg_dict()
         if zmq_sever.is_exist_in_dict("stop_move"):
             try:
-                robot_control.move_stop()
+                robot_control.stop_move()
                 zmq_sever.send_recv_response({"stop_move": True})
             except Exception as e:
                 log.error_show(f"机械臂停止失败{str(e)}")
@@ -113,7 +112,7 @@ def robot_cmd(robot_control, log):
 
         if zmq_sever.is_exist_in_dict("ClearError") and robot_control.robot_brand == "dobot":
             try:
-                error_id = robot_control.robot_ctl.ClearError()
+                error_id = robot_control.clear_error()
                 zmq_sever.send_recv_response({"ClearError": True})
             except Exception as e:
                 log.error_show(f"清除dobot错误失败{str(e)}")
@@ -123,7 +122,7 @@ def robot_cmd(robot_control, log):
         if zmq_sever.is_exist_in_dict("StartDrag") and robot_control.robot_brand == "dobot":
             param = zmq_sever.robot_msg_dict["StartDrag"]
             try:
-                error_id = robot_control.robot_ctl.StartDrag(status=param["status"])
+                error_id = robot_control.start_drag(status=param["status"])
                 zmq_sever.send_recv_response({"StartDrag": True})
             except Exception as e:
                 log.error_show(f"开启/关闭dobot机器人拖拽失败{str(e)}")
@@ -150,57 +149,17 @@ def zmq_sever_process(sys_argv: list):
         robot_brand = "dobot"
     else:
         robot_brand = sys_argv[1]
-    result_value = multiprocessing.Value('h', 0)
-    running_value = multiprocessing.Value('h', 0)
-    grasp_init = False
-    hand_ctl = None
 
     log = CasLogger('logfiles/robot_move_log.log')
+    robot_control = RobotNode(robot_brand=robot_brand, info_queue=log.info_queue,
+                              error_queue=log.error_queue, tool_end=dict(pos=(0, 0, 0), ori=(0, 0, 0)))
+
     zmq_sever = RobotSeverZMQ(port=8100, log=log)
 
     robot_state_process = multiprocessing.Process(target=robot_state_feedback,
-                                                  args=(running_value, result_value),
+                                                  args=(robot_control.running_value, robot_control.result_value),
                                                   daemon=True)
     robot_state_process.start()
-
-    try:
-        if robot_brand == "aubo":
-            import platform
-            if platform.system() == "Windows" and platform.python_version().rsplit(".", 1)[0] != "3.7":
-                log.error_show(f"aubo机器人在Windows下只支持python 3.7.x版本, 当前python版本为{platform.python_version()}")
-                raise Exception(f"aubo机器人在Windows下只支持python 3.7.x版本, 当前python版本为{platform.python_version()}")
-            from RobotControl.aubo_ctl import AuboControl
-            robot_control = AuboControl(default_robot=True,
-                                        max_line_vel=0.2, max_line_acc=0.1,
-                                        max_angular_vel=40, max_angular_acc=20,
-                                        max_joint_vel=90, max_joint_acc=50)
-            running_value.value = -1
-            log.finish_show(f"机械臂{robot_brand}初始化成功")
-
-        elif robot_brand == "dobot":
-            robot_state = DobotApiState()
-            robot_control = DobotControl(default_robot=True,
-                                         logger=log,
-                                         joint_max_vel=70, joint_max_acc=70,
-                                         line_max_vel=50, line_max_acc=50,
-                                         state_data_array=robot_state.data_array)
-            running_value.value = -1
-            log.finish_show(f"机械臂{robot_brand}初始化成功")
-
-        elif robot_brand == "moveit2":
-            from RobotControl.moveit2_ctl import Moveit2Control
-            robot_control = Moveit2Control(logger=log)
-            running_value.value = -1
-            log.finish_show(f"{robot_brand}初始化成功")
-
-        else:
-            robot_control = None
-            log.error_show(f"未找到机器人{robot_brand}")
-
-    except Exception as e:
-        running_value.value = -2
-        log.error_show(f"机械臂初始化失败{str(e)}")
-        return
 
     robot_cmd_thread = threading.Thread(target=robot_cmd,
                                         args=(robot_control, log),
@@ -217,24 +176,7 @@ def zmq_sever_process(sys_argv: list):
             param = zmq_sever.robot_msg_dict["grasper_select"]
             grasper_select = param["num"]
             try:
-                if grasper_select == 1:
-                    hand_ctl = DhModbus(connect_type=0, rtu_port_name='COM3', baud_rate=115200, log=log)
-                elif grasper_select == 2:
-                    hand_ctl = DhModbus(connect_type=1, ip="192.168.5.12", port=502, log=log)
-                elif grasper_select == 3:
-                    hand_ctl = DhModbus(connect_type=2, dobot_robot=robot_control, log=log)
-                elif grasper_select == 4:
-                    hand_ctl = RMHandModbus(connect_type=0, rtu_port_name='COM4', baud_rate=115200, log=log)
-                elif grasper_select == 5:
-                    hand_ctl = RMHandModbus(connect_type=1, ip="192.168.5.12", port=502, log=log)
-                elif grasper_select == 6:
-                    hand_ctl = RMHandModbus(connect_type=2, dobot_robot=robot_control, log=log)
-                elif grasper_select == 7:
-                    from RobotControl.moveit2_ctl import GripperMoveit
-                    hand_ctl = GripperMoveit()
-                else:
-                    hand_ctl = UniversalGraspHandCtl(log=log)
-
+                robot_control.switch_grasper(grasper_select)
                 grasp_init = True
                 log.finish_show("夹爪初始成功")
                 zmq_sever.send_recv_response({"grasper_select": True})
@@ -255,68 +197,51 @@ def zmq_sever_process(sys_argv: list):
 
         if zmq_sever.is_exist_in_dict("move_to_pose"):
             param = zmq_sever.robot_msg_dict["move_to_pose"]
-            result_value.value = 0
-            try:
-                running_value.value = 1
-                pose_rt = robot_control.pos_to_rmatrix(param["pos"], param["ori"])
-                robot_control.move_to_waypoints(waypoints=[pose_rt], coor=param["coor"],
-                                                move_style=param["move_style"], offset=param["offset"],
-                                                is_move_offset=param["is_move_offset"],
-                                                check_joints_degree_range=param["check_joints_degree_range"])
-                zmq_sever.send_recv_response({"move_to_pose": True})
-                result_value.value = 1
-                running_value.value = -1
+            pose_rt = robot_control.pos_to_rmatrix(param["pos"], param["ori"])
+            result = robot_control.move_pose(pose_list=[pose_rt], coor=param["coor"],
+                                             move_style=param["move_style"], offset=param["offset"],
+                                             check_joints_range=param["check_joints_degree_range"])
 
-            except Exception as e:
+            if result is True:
+                zmq_sever.send_recv_response({"move_to_pose": True})
+            else:
                 zmq_sever.send_recv_response({"move_to_pose": False})
                 log.error_show(f"机械臂位置移动失败,{e}")
-                result_value.value = -1
-                running_value.value = -1
 
             continue
 
         if zmq_sever.is_exist_in_dict("move_to_joint"):
             param = zmq_sever.robot_msg_dict["move_to_joint"]
-            result_value.value = 0
-            try:
-                running_value.value = 1
-                robot_control.move_to_waypoints_in_joint(waypoints_joint=[param["joints"]],
-                                                         move_style=param["move_style"],
-                                                         check_joints_degree_range=param[
-                                                             "check_joints_degree_range"])
+            result = robot_control.move_joint(joint_list=[param["joints"]],
+                                              move_style=param["move_style"],
+                                              check_joints_range=param["check_joints_degree_range"])
+            if result is True:
                 zmq_sever.send_recv_response({"move_to_joint": True})
-                result_value.value = 1
-                running_value.value = -1
-            except Exception as e:
+
+            else:
                 log.error_show(f"机械臂关节移动失败{str(e)}")
                 zmq_sever.send_recv_response({"move_to_joint": False})
-                result_value.value = -1
-                running_value.value = -1
-
             continue
 
         if zmq_sever.is_exist_in_dict("move_offset"):
             param = zmq_sever.robot_msg_dict["move_offset"]
-            try:
-                running_value.value = 1
-                robot_control.move_offset(offset=param["offset"])
+
+            result = robot_control.move_offset(offset=param["offset"])
+            if result is True:
                 zmq_sever.send_recv_response({"move_offset": True})
-                result_value.value = 1
-                running_value.value = -1
-            except Exception as e:
+            else:
                 log.error_show(f"机械臂偏移移动失败{e}")
                 zmq_sever.send_recv_response({"move_offset": False})
-                result_value.value = -1
-                running_value.value = -1
+
             continue
 
         if zmq_sever.is_exist_in_dict("grasper_execute") and grasp_init is True:
             param = zmq_sever.robot_msg_dict["grasper_execute"]
             try:
                 if param["is_grasp"] is True:
-                    hand_ctl.grasp(pos=param["pos"], force=param["force"])
+                    robot_control.grasper_execute(is_grasp=True, pos=param["pos"], force=param["force"])
                 else:
-                    hand_ctl.release(pos=param["pos"])
+                    robot_control.grasper_execute(is_grasp=False, pos=param["pos"])
                 zmq_sever.send_recv_response({"grasper_execute": True})
             except Exception as e:
                 log.error_show(f"抓取失败，{e}")
@@ -327,9 +252,9 @@ def zmq_sever_process(sys_argv: list):
             param = zmq_sever.robot_msg_dict["sucker_execute"]
             try:
                 if param["is_suck"] is True:
-                    hand_ctl.suck()
+                    robot_control.sucker_execute(is_suck=True)
                 else:
-                    hand_ctl.release_suck()
+                    robot_control.sucker_execute(is_suck=False)
                 zmq_sever.send_recv_response({"sucker_execute": True})
 
             except Exception as e:
@@ -339,19 +264,9 @@ def zmq_sever_process(sys_argv: list):
 
         if zmq_sever.is_exist_in_dict("switch_grasper"):
             param = zmq_sever.robot_msg_dict["switch_grasper"]
-            try:
-                if param["release_num"] != 0:
-                    if fs.release_switcher(param["release_num"]) and fs.connect_switcher(param["connect_num"]):
-                        zmq_sever.send_recv_response({"switch_grasper": True})
-                    else:
-                        zmq_sever.send_recv_response({"switch_grasper": False})
-                else:
-                    if fs.connect_switcher(param["connect_num"]):
-                        zmq_sever.send_recv_response({"switch_grasper": True})
-                    else:
-                        zmq_sever.send_recv_response({"switch_grasper": False})
-            except Exception as e:
-                log.error_show(f"切换夹爪失败，{e}")
+            if fs.connect_switcher(param["connect_num"]):
+                zmq_sever.send_recv_response({"switch_grasper": True})
+            else:
                 zmq_sever.send_recv_response({"switch_grasper": False})
             continue
 

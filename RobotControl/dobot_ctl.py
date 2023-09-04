@@ -9,7 +9,7 @@ class DobotControl:
     def __init__(self, default_robot: bool = True,
                  logger=None,
                  tool_end=None,
-                 ip='192.168.5.1',
+                 ip='192.168.10.41',
                  port_ctl=29999, port_move=30003,
                  global_speed=50, payload=0.1,
                  collision_level=3, center_of_mass=(0.0, 0.0, 0.05),

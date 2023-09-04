@@ -13,7 +13,7 @@ class Modbus:
 
 
 class ModbusCtl:
-    def __init__(self, log=None, ip="192.168.5.12", port=9502, slave_id=0x02):
+    def __init__(self, log=None, ip="192.168.10.42", port=9502, slave_id=0x02):
         self.slave_id = slave_id
         self.master = modbus_tcp.TcpMaster(host=ip, port=port)
         self.master.set_timeout(3.0)
@@ -92,7 +92,7 @@ class ModbusCtl:
 
 
 class UniversalGraspHandCtl(ModbusCtl):
-    def __init__(self, log=None, ip="192.168.5.12", port=9502, slave_id=0x02):
+    def __init__(self, log=None, ip="192.168.10.42", port=9502, slave_id=0x02):
         super().__init__(log=log, ip=ip, port=port, slave_id=slave_id)
 
     def grasp(self, pos=0, force=50):
@@ -107,13 +107,19 @@ class UniversalGraspHandCtl(ModbusCtl):
     def release_suck(self):
         self.write_single_coil(0x01, 0x0000)
 
+    def blow(self):
+        self.write_single_coil(0x00, 0xFF00)
+
+    def release_blow(self):
+        self.write_single_coil(0x00, 0x0000)
+
     def get_fs_statue(self, fs_id, read_nums=1):
         recv_data = self.read_discrete_inputs(address=0x00+fs_id, read_nums=read_nums)
         return recv_data
 
 
 class PressureCtl(ModbusCtl):
-    def __init__(self, log=None, ip="192.168.5.12", port=9502, slave_id=0x02):
+    def __init__(self, log=None, ip="192.168.10.42", port=9502, slave_id=0x02):
         super().__init__(log=log, ip=ip, port=port, slave_id=slave_id)
 
     def get_curr_pressure(self):
@@ -127,7 +133,7 @@ class PressureCtl(ModbusCtl):
 class DhModbus:
     def __init__(self,
                  connect_type=Modbus.TCP_to_RTU,
-                 ip="192.168.5.12", port=502,
+                 ip="192.168.10.42", port=502,
                  rtu_port_name='COM3', baud_rate=115200,
                  slave_id=0x01,
                  dobot_robot: DobotControl = None,
@@ -251,7 +257,7 @@ class DhModbus:
             curr_grasp_statue = self.get_curr_grasp_statue()
             if curr_grasp_statue is None or curr_grasp_statue[0] == 2 or curr_grasp_statue[0] == 1:
                 break
-            time.sleep(0.1)
+            time.sleep(0.2)
 
     def release(self, pos=0.145):
         if pos is None:
@@ -270,7 +276,7 @@ class DhModbus:
 class RMHandModbus:
     def __init__(self,
                  connect_type=Modbus.TCP_to_RTU,
-                 ip="192.168.5.12", port=502,
+                 ip="192.168.10.42", port=502,
                  rtu_port_name='COM4', baud_rate=115200,
                  dobot_robot: DobotControl = None,
                  log=None):
@@ -406,7 +412,7 @@ class RMHandModbus:
 class SuckMotor:
     def __init__(self,
                  connect_type=Modbus.TCP_to_RTU,
-                 ip="192.168.5.12", port=502,
+                 ip="192.168.10.42", port=502,
                  rtu_port_name='COM3', baud_rate=115200,
                  dobot_robot: DobotControl = None,
                  log=None):

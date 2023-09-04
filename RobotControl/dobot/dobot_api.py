@@ -120,7 +120,7 @@ MyType = np.dtype([(
 def robot_info_recv():
     try:
         info_socket = socket.socket()
-        info_socket.connect(("192.168.5.1", 30004))
+        info_socket.connect(("192.168.10.41", 30004))
     except socket.error:
         print(socket.error)
         raise Exception(
@@ -178,7 +178,14 @@ class DobotApi:
         try:
             self.socket_dobot.send(str.encode(string, 'utf-8'))
         except Exception as e:
-            self.log(f"Send to 192.168.5.1:{self.port}: {string} Failed {e}, Please reconnect robot")
+            self.log(f"Send to 192.168.10.41:{self.port}: {string} Failed {e}, retry to send")
+            try:
+                self.socket_dobot.close()
+                self.socket_dobot = socket.socket()
+                self.socket_dobot.connect((self.ip, self.port))
+                self.socket_dobot.send(str.encode(string, 'utf-8'))
+            except Exception as e:
+                self.log(f"Retry to Send to 192.168.10.41:{self.port}: {string} Failed {e}, Please reconnect robot")
 
     def wait_reply(self, wait_error_info: bool = True) -> (int, list):
         """
@@ -204,7 +211,7 @@ class DobotApi:
                     self.log(f"Error info: {error_info}")
             return error_id, result
         except Exception as e:
-            self.log(f'Receive from 192.168.5.1:{self.port}: {data_str} Failed{e}, Please reconnect robot')
+            self.log(f'Receive from 192.168.10.41:{self.port}: {data_str} Failed{e}, Please reconnect robot')
             return -1, None
 
     def close(self):
@@ -1076,7 +1083,7 @@ class DobotApiState(Process):
     def run(self) -> None:
         info_socket = socket.socket()
         try:
-            info_socket.connect(("192.168.5.1", 30004))
+            info_socket.connect(("192.168.10.41", 30004))
         except socket.error:
             print(f"Unable to set socket connection use port 3004 is {socket.error} !")
             return
@@ -1104,7 +1111,7 @@ class DobotApiState(Process):
 def get_robot_state_local():
     try:
         info_socket = socket.socket()
-        info_socket.connect(("192.168.5.1", 30004))
+        info_socket.connect(("192.168.10.41", 30004))
     except socket.error:
         print(f"Unable to set socket connection use port 30004 is {socket.error} !")
         return
