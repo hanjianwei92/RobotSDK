@@ -175,7 +175,7 @@ class FastSwitcher:
             self.robot.move_offset(-0.01)
 
             ret = self.move_pose([pose_rt_middle], offset=0.0, is_init=False, move_style=RobotMoveStyle.move_joint_line)
-            if ret is False:
+            if ret is False or self.get_curr_fs_num() != num:
                 raise Exception("error")
             self.robot.move_offset(-0.30)
 
